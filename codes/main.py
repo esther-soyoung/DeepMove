@@ -58,8 +58,11 @@ def run(args):
     criterion = nn.NLLLoss().cuda()
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=parameters.lr,
                            weight_decay=parameters.L2)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=parameters.lr_step,
-                                                     factor=parameters.lr_decay, threshold=1e-3)
+    #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=parameters.lr_step,
+    #                                                 factor=parameters.lr_decay, threshold=1e-3)
+    scheduler = optim.ReduceLROnPlateau(optimizer, 'max', patience=parameters.lr_step,
+                                        factor=parameters.lr_decay, threshold=1e-3)
+
 
     lr = parameters.lr
     metrics = {'train_loss': [], 'valid_loss': [], 'accuracy': [], 'valid_acc': {}}
