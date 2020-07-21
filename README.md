@@ -7,6 +7,7 @@ The sample data to evaluate our model can be found in the data folder, which con
 # Requirements
 - Python 2.7
 - [Pytorch](https://pytorch.org/previous-versions/) 0.20
+- Pytorch 0.3.0 with CUDA 9.0.176 and cuDNN 7003
 
 cPickle is used in the project to store the preprocessed data and parameters. While appearing some warnings, pytorch 0.3.0 can also be used.
 
