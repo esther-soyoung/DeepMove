@@ -181,7 +181,7 @@ class Settings(object):
 if __name__ == '__main__':
     np.random.seed(1)
     torch.manual_seed(1)
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--loc_emb_size', type=int, default=500, help="location embeddings size")
