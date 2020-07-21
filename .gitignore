@@ -103,3 +103,4 @@ ENV/
 
 # for macos
 .DS_Store
+*.pdf
