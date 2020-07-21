@@ -105,3 +105,4 @@ ENV/
 .DS_Store
 *.pdf
 checkpoint/
+torch/
