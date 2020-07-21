@@ -106,3 +106,4 @@ ENV/
 *.pdf
 checkpoint/
 torch/
+results_foursquare/
