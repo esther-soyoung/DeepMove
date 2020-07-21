@@ -101,6 +101,7 @@ ENV/
 .mypy_cache/
 .idea/
 
-# for macos
+# for baseline test
 .DS_Store
 *.pdf
+checkpoint/
