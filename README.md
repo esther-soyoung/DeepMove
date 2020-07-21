@@ -34,6 +34,10 @@ cPickle is used in the project to store the preprocessed data and parameters. Wh
 > ```python
 > python main.py --model_mode=attn_avg_long_user --pretrain=1
 > ```
+Specify saving path:
+> ```python
+> python main.py --model_mode=attn_local_long --pretrain=1 --save_path=../results_foursquare/ > ../results_foursquare/out
+> ```
 
 The codes contain four network model (simple, simple_long, attn_avg_long_user, attn_local_long) and a baseline model (Markov). The parameter settings for these model can refer to their [res.txt](https://github.com/vonfeng/DeepMove/blob/master/pretrain/simple/res.txt) file.
 
