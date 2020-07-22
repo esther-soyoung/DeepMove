@@ -28,7 +28,7 @@ class DataFoursquare(object):
     def __init__(self, trace_min=10, global_visit=10, hour_gap=72, min_gap=10, session_min=2, session_max=10,
                  sessions_min=2, train_split=0.8, embedding_len=50):
         tmp_path = "../data/Foursquare/"
-        self.TWITTER_PATH = tmp_path + 'tweets_cikm.txt'
+        self.TWITTER_PATH = tmp_path + 'tweets-cikm.txt'
         self.VENUES_PATH = tmp_path + 'venues_all.txt'
         self.SAVE_PATH = tmp_path
         self.save_name = 'foursquare'
