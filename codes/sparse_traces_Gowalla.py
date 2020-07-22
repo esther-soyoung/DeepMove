@@ -28,10 +28,10 @@ class DataGowalla(object):
     def __init__(self, trace_min=10, global_visit=10, hour_gap=72, min_gap=10, session_min=2, session_max=10,
                  sessions_min=2, train_split=0.8, embedding_len=50):
         tmp_path = "../data/Gowalla"
-        self.TWITTER_PATH = tmp_path + 'foursquare/tweets_clean.txt'
-        self.VENUES_PATH = tmp_path + 'foursquare/venues_all.txt'
+        self.DATA_PATH = tmp_path + 'Gowalla_totalCheckins2.txt'
+        #self.VENUES_PATH = tmp_path + 'foursquare/venues_all.txt'
         self.SAVE_PATH = tmp_path
-        self.save_name = 'foursquare'
+        self.save_name = 'gowalla'
 
         self.trace_len_min = trace_min
         self.location_global_visit_min = global_visit
@@ -59,11 +59,11 @@ class DataGowalla(object):
         self.pid_loc_lat = {}
         self.data_neural = {}
 
-    # ############# 1. read trajectory data from twitters
-    def load_trajectory_from_tweets(self):
-        with open(self.TWITTER_PATH) as fid:
+    # ############# 1. read trajectory data from Gowalla
+    def load_trajectory_from_gowalla(self):
+        with open(self.DATA_PATH) as fid:
             for i, line in enumerate(fid):
-                _, uid, _, _, tim, _, _, tweet, pid = line.strip('\r\n').split('')
+                uid, tim, _, _, pid = line.strip().split('\t')
                 if uid not in self.data:
                     self.data[uid] = [[pid, tim]]
                 else:
@@ -138,9 +138,9 @@ class DataGowalla(object):
 
     # support for radius of gyration
     def load_venues(self):
-        with open(self.TWITTER_PATH, 'r') as fid:
+        with open(self.DATA_PATH, 'r') as fid:
             for line in fid:
-                _, uid, lon, lat, tim, _, _, tweet, pid = line.strip('\r\n').split('')
+                uid, tim, lat, lon, pid = line.strip().split('\t')
                 self.pid_loc_lat[pid] = [float(lon), float(lat)]
 
     def venues_lookup(self):
@@ -223,7 +223,7 @@ class DataGowalla(object):
     # ############# 6. save variables
     def get_parameters(self):
         parameters = {}
-        parameters['TWITTER_PATH'] = self.TWITTER_PATH
+        parameters['DATA_PATH'] = self.DATA_PATH
         parameters['SAVE_PATH'] = self.SAVE_PATH
 
         parameters['trace_len_min'] = self.trace_len_min
@@ -238,10 +238,10 @@ class DataGowalla(object):
         return parameters
 
     def save_variables(self):
-        foursquare_dataset = {'data_neural': self.data_neural, 'vid_list': self.vid_list, 'uid_list': self.uid_list,
+        gowalla_dataset = {'data_neural': self.data_neural, 'vid_list': self.vid_list, 'uid_list': self.uid_list,
                               'parameters': self.get_parameters(), 'data_filter': self.data_filter,
                               'vid_lookup': self.vid_lookup}
-        pickle.dump(foursquare_dataset, open(self.SAVE_PATH + self.save_name + '.pk', 'wb'))
+        pickle.dump(gowalla_dataset, open(self.SAVE_PATH + self.save_name + '.pk', 'wb'))
 
 
 def parse_args():
@@ -259,15 +259,15 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    data_generator = DataFoursquare(trace_min=args.trace_min, global_visit=args.global_visit,
+    data_generator = DataGowalla(trace_min=args.trace_min, global_visit=args.global_visit,
                                     hour_gap=args.hour_gap, min_gap=args.min_gap,
                                     session_min=args.session_min, session_max=args.session_max,
                                     sessions_min=args.sessions_min, train_split=args.train_split)
     parameters = data_generator.get_parameters()
     print('############PARAMETER SETTINGS:\n' + '\n'.join([p + ':' + str(parameters[p]) for p in parameters]))
     print('############START PROCESSING:')
-    print('load trajectory from {}'.format(data_generator.TWITTER_PATH))
-    data_generator.load_trajectory_from_tweets()
+    print('load trajectory from {}'.format(data_generator.DATA_PATH))
+    data_generator.load_trajectory_from_gowalla()
     print('filter users')
     data_generator.filter_users_by_length()
     print('build users/locations dictionary')
