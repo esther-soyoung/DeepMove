@@ -100,6 +100,8 @@ def run(args):
                                          criterion, parameters.model_mode)
             print('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
             metrics['train_loss'].append(avg_loss)
+        import pdb
+        pdb.set_trace()
 
         avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
                                                   optimizer, criterion, parameters.model_mode)
