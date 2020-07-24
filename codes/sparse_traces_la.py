@@ -93,6 +93,8 @@ class DataFoursquareLA(object):
                 try:
                     # Mon Sep 29 20:29:55 CDT 2014
                     #tid = int(time.mktime(time.strptime(tmd, "%Y-%m-%d %H:%M:%S")))
+                    tmd = tmd.replace('CDT ', '')
+                    tmd = tmd.replace('CST ', '')
                     tid = int(time.mktime(time.strptime(tmd, "%a %b %d %H:%M:%S CDT %Y")))
                 except Exception as e:
                     print('error:{}'.format(e))
