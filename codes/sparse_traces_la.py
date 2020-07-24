@@ -144,7 +144,7 @@ class DataFoursquareLA(object):
     def load_venues(self):
         with open(self.TWITTER_PATH, 'r') as fid:
             for line in fid:
-                _, uid, lon, lat, tim, _, _, tweet, pid = line.strip('\r\n').split('')
+                pid, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
                 self.pid_loc_lat[pid] = [float(lon), float(lat)]
 
     def venues_lookup(self):
