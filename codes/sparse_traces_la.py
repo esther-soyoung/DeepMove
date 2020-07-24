@@ -63,7 +63,7 @@ class DataFoursquareLA(object):
     def load_trajectory_from_tweets(self):
         with open(self.TWITTER_PATH) as fid:
             for i, line in enumerate(fid):
-                _, uid, _, _, tim, _, _, tweet, pid = line.strip('\r\n').split('')
+                pid, uid, _, _, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
                 if uid not in self.data:
                     self.data[uid] = [[pid, tim]]
                 else:
