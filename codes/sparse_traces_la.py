@@ -91,7 +91,9 @@ class DataFoursquareLA(object):
             for i, record in enumerate(info):
                 poi, tmd = record
                 try:
-                    tid = int(time.mktime(time.strptime(tmd, "%Y-%m-%d %H:%M:%S")))
+                    # Mon Sep 29 20:29:55 CDT 2014
+                    #tid = int(time.mktime(time.strptime(tmd, "%Y-%m-%d %H:%M:%S")))
+                    tid = int(time.mktime(time.strptime(tmd, "%a %b %d %H:%M:%S CDT %Y")))
                 except Exception as e:
                     print('error:{}'.format(e))
                     continue
