@@ -24,7 +24,7 @@ def entropy_spatial(sessions):
     return entropy
 
 
-class DataFoursquare(object):
+class DataFoursquareLA(object):
     def __init__(self, trace_min=10, global_visit=10, hour_gap=72, min_gap=10, session_min=2, session_max=10,
                  sessions_min=2, train_split=0.8, embedding_len=50):
         tmp_path = "../data/LA/"
@@ -259,7 +259,7 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    data_generator = DataFoursquare(trace_min=args.trace_min, global_visit=args.global_visit,
+    data_generator = DataFoursquareLA(trace_min=args.trace_min, global_visit=args.global_visit,
                                     hour_gap=args.hour_gap, min_gap=args.min_gap,
                                     session_min=args.session_min, session_max=args.session_max,
                                     sessions_min=args.sessions_min, train_split=args.train_split)
