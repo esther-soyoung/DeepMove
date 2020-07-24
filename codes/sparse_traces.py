@@ -31,7 +31,7 @@ class DataFoursquare(object):
         self.TWITTER_PATH = tmp_path + 'tweets-cikm.txt'
         self.VENUES_PATH = tmp_path + 'venues_all.txt'
         self.SAVE_PATH = tmp_path
-        self.save_name = 'foursquare'
+        self.save_name = 'foursquare2'
 
         self.trace_len_min = trace_min
         self.location_global_visit_min = global_visit
@@ -75,17 +75,22 @@ class DataFoursquare(object):
 
     # ########### 3.0 basically filter users based on visit length and other statistics
     def filter_users_by_length(self):
+        # filter out uses with less than 10 records
         uid_3 = [x for x in self.data if len(self.data[x]) > self.trace_len_min]
+        # sort users by the number of records, descending order
         pick3 = sorted([(x, len(self.data[x])) for x in uid_3], key=lambda x: x[1], reverse=True)
+        # filter out venues with less than 10 visits
         pid_3 = [x for x in self.venues if self.venues[x] > self.location_global_visit_min]
+        # sort venues by the number of visits, descending order
         pid_pic3 = sorted([(x, self.venues[x]) for x in pid_3], key=lambda x: x[1], reverse=True)
         pid_3 = dict(pid_pic3)
 
         session_len_list = []
         for u in pick3:
             uid = u[0]
-            info = self.data[uid]
-            topk = Counter([x[0] for x in info]).most_common()
+            info = self.data[uid]  # [[pid, tim]]
+            topk = Counter([x[0] for x in info]).most_common()  # pid, number of visits (descending order)
+            # pid of locations visited more than once
             topk1 = [x[0] for x in topk if x[1] > 1]
             sessions = {}
             for i, record in enumerate(info):
@@ -95,7 +100,7 @@ class DataFoursquare(object):
                 except Exception as e:
                     print('error:{}'.format(e))
                     continue
-                sid = len(sessions)
+                sid = len(sessions)  # session id
                 if poi not in pid_3 and poi not in topk1:
                     # if poi not in topk1:
                     continue
@@ -278,7 +283,9 @@ if __name__ == '__main__':
     data_generator.prepare_neural_data()
     print('save prepared data')
     data_generator.save_variables()
+    # raw users:15639 raw locations:43380
     print('raw users:{} raw locations:{}'.format(
         len(data_generator.data), len(data_generator.venues)))
+    # final users:886 final locations:10493
     print('final users:{} final locations:{}'.format(
         len(data_generator.data_neural), len(data_generator.vid_list)))

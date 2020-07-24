@@ -64,6 +64,10 @@ class DataFoursquareLA(object):
         with open(self.TWITTER_PATH) as fid:
             for i, line in enumerate(fid):
                 pid, uid, _, _, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
+                # Mon Sep 29 20:29:55 CDT 2014
+                tim = tim.replace('CDT ', '').replace('CST ', '')
+                tim = time.strptime(tim, "%a %b %d %H:%M:%S %Y")
+                tim = time.strftime("%Y-%m-%d %H:%M:%S", tim)
                 if uid not in self.data:
                     self.data[uid] = [[pid, tim]]
                 else:
@@ -91,11 +95,7 @@ class DataFoursquareLA(object):
             for i, record in enumerate(info):
                 poi, tmd = record
                 try:
-                    # Mon Sep 29 20:29:55 CDT 2014
-                    #tid = int(time.mktime(time.strptime(tmd, "%Y-%m-%d %H:%M:%S")))
-                    tmd = tmd.replace('CDT ', '')
-                    tmd = tmd.replace('CST ', '')
-                    tid = int(time.mktime(time.strptime(tmd, "%a %b %d %H:%M:%S %Y")))
+                    tid = int(time.mktime(time.strptime(tmd, "%Y-%m-%d %H:%M:%S")))
                 except Exception as e:
                     print('error:{}'.format(e))
                     continue
@@ -251,6 +251,9 @@ class DataFoursquareLA(object):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--trace_min', type=int, default=10, help="raw trace length filter threshold")
+    # global_visit
+    # 0: final users:2665 final locations:247188
+    # >=1: final users:0 final locations:1
     parser.add_argument('--global_visit', type=int, default=10, help="location global visit threshold")
     parser.add_argument('--hour_gap', type=int, default=72, help="maximum interval of two trajectory points")
     parser.add_argument('--min_gap', type=int, default=10, help="minimum interval of two trajectory points")
@@ -282,6 +285,7 @@ if __name__ == '__main__':
     data_generator.prepare_neural_data()
     print('save prepared data')
     data_generator.save_variables()
+    # raw users:153626 raw locations:1188405
     print('raw users:{} raw locations:{}'.format(
         len(data_generator.data), len(data_generator.venues)))
     print('final users:{} final locations:{}'.format(
