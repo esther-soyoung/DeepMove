@@ -166,7 +166,7 @@ def generate_input_long_history(data_neural, mode, candidate=None):
     if candidate is None:
         candidate = data_neural.keys()
     for u in candidate:
-        sessions = data_neural[u]['sessions']
+        sessions = data_neural[u]['sessions']  # {sid: [[vid, tid]]}
         train_id = data_neural[u][mode]
         data_train[u] = {}
         for c, i in enumerate(train_id):

@@ -75,17 +75,32 @@ class DataFoursquare(object):
 
     # ########### 3.0 basically filter users based on visit length and other statistics
     def filter_users_by_length(self):
+        # average number of records per user
+        import numpy as np
+        avg = np.mean([len(self.data[x]) for x in self.data])
+        mx = np.max([len(self.data[x]) for x in self.data])
+        print('Average number of records per user: %f' %avg)
+        print('Max number of records per user: %f' %mx)
         # filter out uses with less than 10 records
         uid_3 = [x for x in self.data if len(self.data[x]) > self.trace_len_min]
+        print('Number of users with >= 10 records: %d' %len(uid_3))
         # sort users by the number of records, descending order
         pick3 = sorted([(x, len(self.data[x])) for x in uid_3], key=lambda x: x[1], reverse=True)
+        # average number of visits per venue
+        avg2 = np.mean([self.venues[x] for x in self.venues])
+        mx2 = np.max([self.venues[x] for x in self.venues])
+        print('Average number of visits per venue: %f' %avg2)
+        print('Max number of visits per venue: %f' %mx2)
         # filter out venues with less than 10 visits
         pid_3 = [x for x in self.venues if self.venues[x] > self.location_global_visit_min]
+        print('Number of venues with >= 10 visits: %d' % len(pid_3))
         # sort venues by the number of visits, descending order
         pid_pic3 = sorted([(x, self.venues[x]) for x in pid_3], key=lambda x: x[1], reverse=True)
         pid_3 = dict(pid_pic3)
 
         session_len_list = []
+        hr_gap = []
+        mn_gap = []
         for u in pick3:
             uid = u[0]
             info = self.data[uid]  # [[pid, tim]]
@@ -100,36 +115,57 @@ class DataFoursquare(object):
                 except Exception as e:
                     print('error:{}'.format(e))
                     continue
-                sid = len(sessions)  # session id
-                if poi not in pid_3 and poi not in topk1:
+                sid = len(sessions)  # session id, 0 index
+                if poi not in pid_3 and poi not in topk1:  # visited less than 10 times
                     # if poi not in topk1:
                     continue
-                if i == 0 or len(sessions) == 0:
+                # else, add this [pid, tmd] as session
+                if i == 0 or len(sessions) == 0:  # init sessions
                     sessions[sid] = [record]
                 else:
+                    hr_gap.append((tid - last_tid) / 3600)
+                    mn_gap.append((tid - last_tid) / 60)
+                    # if hour gap since last record > 72 | last session has > 10 records, start new session
                     if (tid - last_tid) / 3600 > self.hour_gap or len(sessions[sid - 1]) > self.session_max:
                         sessions[sid] = [record]
+                    # if the record is apart from the last record for
+                    # <= 72 hours, and
+                    # > 10 minutes,
+                    # then append record to the last session
                     elif (tid - last_tid) / 60 > self.min_gap:
                         sessions[sid - 1].append(record)
+                    # if the record is apart from the last record for <= 10 minutes
                     else:
                         pass
                 last_tid = tid
             sessions_filter = {}
+            sess_cnt = [len(sessions[s]) for s in sessions]
+            print('Average number of records per session: %f' %np.mean(sess_cnt))
+            print('Max number of records per session: %f' %np.max(sess_cnt))
             for s in sessions:
+                # sessions with records >= 5
                 if len(sessions[s]) >= self.filter_short_session:
                     sessions_filter[len(sessions_filter)] = sessions[s]
                     session_len_list.append(len(sessions[s]))
+            # if the filtered sessions(sessions with >= 5 records) are >= 5
             if len(sessions_filter) >= self.sessions_count_min:
                 self.data_filter[uid] = {'sessions_count': len(sessions_filter), 'topk_count': len(topk), 'topk': topk,
                                          'sessions': sessions_filter, 'raw_sessions': sessions}
+        # print('Average hour gap: %f' %np.mean(hr_gap))
+        # print('Max hour gap: %f' %np.max(hr_gap))
+        # print('Average minute gap: %f' %np.mean(mn_gap))
+        # print('Max minute gap: %f' %np.max(mn_gap))
 
+        # list of uid in filtered sessions
         self.user_filter3 = [x for x in self.data_filter if
                              self.data_filter[x]['sessions_count'] >= self.sessions_count_min]
+        filtered = [self.data_filter[x]['sessions'] for x in self.data_filter]
+        print('')
 
     # ########### 4. build dictionary for users and location
     def build_users_locations_dict(self):
         for u in self.user_filter3:
-            sessions = self.data_filter[u]['sessions']
+            sessions = self.data_filter[u]['sessions']  # filtered sessions
             if u not in self.uid_list:
                 self.uid_list[u] = [len(self.uid_list), len(sessions)]
             for sid in sessions:
@@ -177,16 +213,16 @@ class DataFoursquare(object):
             sessions_id = []
             for sid in sessions:
                 sessions_tran[sid] = [[self.vid_list[p[0]][0], self.tid_list_48(p[1])] for p in
-                                      sessions[sid]]
+                                      sessions[sid]]  # [vid, tid]
                 sessions_id.append(sid)
             split_id = int(np.floor(self.train_split * len(sessions_id)))
             train_id = sessions_id[:split_id]
             test_id = sessions_id[split_id:]
             pred_len = sum([len(sessions_tran[i]) - 1 for i in train_id])
             valid_len = sum([len(sessions_tran[i]) - 1 for i in test_id])
-            train_loc = {}
+            train_loc = {}  # vid: number of visits
             for i in train_id:
-                for sess in sessions_tran[i]:
+                for sess in sessions_tran[i]:  # [vid, tid]
                     if sess[0] in train_loc:
                         train_loc[sess[0]] += 1
                     else:

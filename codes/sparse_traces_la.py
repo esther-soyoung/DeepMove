@@ -1,11 +1,12 @@
 from __future__ import print_function
 from __future__ import division
 
+import sys
 import time
 import argparse
 import numpy as np
 import cPickle as pickle
-from collections import Counter
+from collections import Counter, defaultdict
 
 
 def entropy_spatial(sessions):
@@ -23,13 +24,22 @@ def entropy_spatial(sessions):
     entropy = - np.sum(frequency * np.log(frequency))
     return entropy
 
+def load_venues_from_tweets(path):
+    poi = {}
+    cnt = 0
+    with open(path) as v:
+        for line in v:
+            _, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
+            poi[(lon, lat)] = cnt
+            cnt += 1
+    return poi
 
 class DataFoursquareLA(object):
     def __init__(self, trace_min=10, global_visit=10, hour_gap=72, min_gap=10, session_min=2, session_max=10,
                  sessions_min=2, train_split=0.8, embedding_len=50):
         tmp_path = "../data/LA/"
         self.TWITTER_PATH = tmp_path + 'la_tweets1100000_cikm.txt'
-        #self.VENUES_PATH = tmp_path + 'venues_all.txt'
+        self.VENUES_PATH = tmp_path + 'venues_all.txt'
         self.SAVE_PATH = tmp_path
         self.save_name = 'foursquare_la'
 
@@ -46,6 +56,7 @@ class DataFoursquareLA(object):
 
         self.data = {}
         self.venues = {}
+        self.pois = load_venues_from_tweets(self.TWITTER_PATH)
         self.words_original = []
         self.words_lens = []
         self.dictionary = dict()
@@ -59,11 +70,13 @@ class DataFoursquareLA(object):
         self.pid_loc_lat = {}
         self.data_neural = {}
 
+
     # ############# 1. read trajectory data from twitters
     def load_trajectory_from_tweets(self):
         with open(self.TWITTER_PATH) as fid:
             for i, line in enumerate(fid):
-                pid, uid, _, _, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
+                _, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
+                pid = self.pois[(lon, lat)]
                 # Mon Sep 29 20:29:55 CDT 2014
                 tim = tim.replace('CDT ', '').replace('CST ', '')
                 tim = time.strptime(tim, "%a %b %d %H:%M:%S %Y")
@@ -79,17 +92,37 @@ class DataFoursquareLA(object):
 
     # ########### 3.0 basically filter users based on visit length and other statistics
     def filter_users_by_length(self):
+        # average number of records per user
+        import numpy as np
+        avg = np.mean([len(self.data[x]) for x in self.data])
+        mx = np.max([len(self.data[x]) for x in self.data])
+        #print('Average number of records per user: %f' %avg)
+        #print('Max number of records per user: %f' %mx)
+        # filter out uses with less than 10 records
         uid_3 = [x for x in self.data if len(self.data[x]) > self.trace_len_min]
+        #print('Number of users with >= 10 records: %d' %len(uid_3))
+        # sort users by the number of records, descending order
         pick3 = sorted([(x, len(self.data[x])) for x in uid_3], key=lambda x: x[1], reverse=True)
+        # average number of visits per venue
+        avg2 = np.mean([self.venues[x] for x in self.venues])
+        mx2 = np.max([self.venues[x] for x in self.venues])
+        #print('Average number of visits per venue: %f' %avg2)
+        #print('Max number of visits per venue: %f' %mx2)
+        # filter out venues with less than 10 visits
         pid_3 = [x for x in self.venues if self.venues[x] > self.location_global_visit_min]
+        #print('Number of venues with >= 10 visits: %d' % len(pid_3))
+        # sort venues by the number of visits, descending order
         pid_pic3 = sorted([(x, self.venues[x]) for x in pid_3], key=lambda x: x[1], reverse=True)
         pid_3 = dict(pid_pic3)
 
         session_len_list = []
+        # hr_gap = []
+        # mn_gap = []
         for u in pick3:
             uid = u[0]
-            info = self.data[uid]
-            topk = Counter([x[0] for x in info]).most_common()
+            info = self.data[uid]  # [[pid, tim]]
+            topk = Counter([x[0] for x in info]).most_common()  # pid, number of visits (descending order)
+            # pid of locations visited more than once
             topk1 = [x[0] for x in topk if x[1] > 1]
             sessions = {}
             for i, record in enumerate(info):
@@ -99,29 +132,51 @@ class DataFoursquareLA(object):
                 except Exception as e:
                     print('error:{}'.format(e))
                     continue
-                sid = len(sessions)
-                if poi not in pid_3 and poi not in topk1:
+                sid = len(sessions)  # session id, 0 index
+                if poi not in pid_3 and poi not in topk1:  # visited less than 10 times
                     # if poi not in topk1:
                     continue
+                # else, add this [pid, tmd] as session
                 if i == 0 or len(sessions) == 0:
                     sessions[sid] = [record]
                 else:
+                    # hr_gap.append((tid - last_tid) / 3600)
+                    # mn_gap.append((tid - last_tid) / 60)
+                    # if hour gap since last record > 72 | last session has > 10 records, start new session
                     if (tid - last_tid) / 3600 > self.hour_gap or len(sessions[sid - 1]) > self.session_max:
                         sessions[sid] = [record]
+                    # if the record is apart from the last record for
+                    # <= 72 hours, and
+                    # > 10 minutes,
+                    # then append record to the last session
                     elif (tid - last_tid) / 60 > self.min_gap:
                         sessions[sid - 1].append(record)
+                    # if the record is apart from the last record for <= 10 minutes
                     else:
                         pass
                 last_tid = tid
             sessions_filter = {}
+            # sess_cnt = [len(sessions[s]) for s in sessions]
+            # print('Average number of records per session: %f' %np.mean(sess_cnt))
+            #print('Max number of records per session: %f' %np.max(sess_cnt))
             for s in sessions:
+                # sessions with records >= 5
                 if len(sessions[s]) >= self.filter_short_session:
                     sessions_filter[len(sessions_filter)] = sessions[s]
                     session_len_list.append(len(sessions[s]))
+            # if the filtered sessions(sessions with >= 5 records) are >= 5
             if len(sessions_filter) >= self.sessions_count_min:
+                # print('Number of filtered sessions: %d' %len(sessions_filter))
                 self.data_filter[uid] = {'sessions_count': len(sessions_filter), 'topk_count': len(topk), 'topk': topk,
                                          'sessions': sessions_filter, 'raw_sessions': sessions}
+            # else:
+            #     print('No filtered sessions left')
+        # print('Average hour gap: %f' %np.mean(hr_gap))
+        # print('Max hour gap: %f' %np.max(hr_gap))
+        # print('Average minute gap: %f' %np.mean(mn_gap))
+        # print('Max minute gap: %f' %np.max(mn_gap))
 
+        # list of uid in filtered sessions
         self.user_filter3 = [x for x in self.data_filter if
                              self.data_filter[x]['sessions_count'] >= self.sessions_count_min]
 
@@ -144,7 +199,8 @@ class DataFoursquareLA(object):
     def load_venues(self):
         with open(self.TWITTER_PATH, 'r') as fid:
             for line in fid:
-                pid, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
+                _, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
+                pid = self.pois[(lon, lat)]
                 self.pid_loc_lat[pid] = [float(lon), float(lat)]
 
     def venues_lookup(self):
@@ -285,8 +341,9 @@ if __name__ == '__main__':
     data_generator.prepare_neural_data()
     print('save prepared data')
     data_generator.save_variables()
-    # raw users:153626 raw locations:1188405
+    # raw users:153626 raw locations:734559
     print('raw users:{} raw locations:{}'.format(
         len(data_generator.data), len(data_generator.venues)))
+    # final users:602 final locations:7621
     print('final users:{} final locations:{}'.format(
         len(data_generator.data_neural), len(data_generator.vid_list)))
