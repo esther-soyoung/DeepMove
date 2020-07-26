@@ -135,8 +135,6 @@ class DataFoursquare(object):
         # list of uid in filtered sessions
         self.user_filter3 = [x for x in self.data_filter if
                              self.data_filter[x]['sessions_count'] >= self.sessions_count_min]
-        filtered = [self.data_filter[x]['sessions'] for x in self.data_filter]
-        print('')
 
     # ########### 4. build dictionary for users and location
     def build_users_locations_dict(self):
