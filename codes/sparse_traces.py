@@ -108,8 +108,6 @@ class DataFoursquare(object):
                 if i == 0 or len(sessions) == 0:  # init sessions
                     sessions[sid] = [record]
                 else:
-                    hr_gap.append((tid - last_tid) / 3600)
-                    mn_gap.append((tid - last_tid) / 60)
                     # if hour gap since last record > 72 | last session has > 10 records, start new session
                     if (tid - last_tid) / 3600 > self.hour_gap or len(sessions[sid - 1]) > self.session_max:
                         sessions[sid] = [record]
