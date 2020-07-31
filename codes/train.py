@@ -164,17 +164,17 @@ def generate_input_long_history(data_neural, mode, candidate=None):
     data_train = {}
     train_idx = {}
     if candidate is None:
-        candidate = data_neural.keys()
+        candidate = data_neural.keys()  # uids
     for u in candidate:
         sessions = data_neural[u]['sessions']  # {sid: [[vid, tid]]}
-        train_id = data_neural[u][mode]
+        train_id = data_neural[u][mode]  # train_id | test_id
         data_train[u] = {}
         for c, i in enumerate(train_id):
             trace = {}
             if mode == 'train' and c == 0:
                 continue
-            session = sessions[i]
-            target = np.array([s[0] for s in session[1:]])
+            session = sessions[i]  # [[vid, tid]]
+            target = np.array([s[0] for s in session[1:]])  # [vid]
 
             history = []
             if mode == 'test':
@@ -182,10 +182,10 @@ def generate_input_long_history(data_neural, mode, candidate=None):
                 for tt in test_id:
                     history.extend([(s[0], s[1]) for s in sessions[tt]])
             for j in range(c):
-                history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])
+                history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])  # 누적 [vid, tid]
 
             history_tim = [t[1] for t in history]
-            history_count = [1]
+            history_count = [1]  # frequency of tids
             last_t = history_tim[0]
             count = 1
             for t in history_tim[1:]:
@@ -203,14 +203,14 @@ def generate_input_long_history(data_neural, mode, candidate=None):
             trace['history_tim'] = Variable(torch.LongTensor(history_tim))
             trace['history_count'] = history_count
 
-            loc_tim = history
-            loc_tim.extend([(s[0], s[1]) for s in session[:-1]])
+            loc_tim = history  # [vid, tid]
+            loc_tim.extend([(s[0], s[1]) for s in session[:-1]])  # until recently
             loc_np = np.reshape(np.array([s[0] for s in loc_tim]), (len(loc_tim), 1))
             tim_np = np.reshape(np.array([s[1] for s in loc_tim]), (len(loc_tim), 1))
             trace['loc'] = Variable(torch.LongTensor(loc_np))
             trace['tim'] = Variable(torch.LongTensor(tim_np))
             trace['target'] = Variable(torch.LongTensor(target))
-            data_train[u][i] = trace
+            data_train[u][i] = trace  # history_loc, history_tim, history_count, loc
         train_idx[u] = train_id
     return data_train, train_idx
 
@@ -223,7 +223,7 @@ def generate_queue(train_idx, mode, mode2):
         initial_queue = {}
         for u in user:
             if mode2 == 'train':
-                initial_queue[u] = deque(train_idx[u][1:])
+                initial_queue[u] = deque(train_idx[u][1:])  # train_id
             else:
                 initial_queue[u] = deque(train_idx[u])
         queue_left = 1
@@ -303,7 +303,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             users_acc[u] = [0, 0]
         loc = data[u][i]['loc'].cuda()
         tim = data[u][i]['tim'].cuda()
-        target = data[u][i]['target'].cuda()
+        target = data[u][i]['target'].cuda()  # [vid]
         uid = Variable(torch.LongTensor([u])).cuda()
 
         if 'attn' in mode2:

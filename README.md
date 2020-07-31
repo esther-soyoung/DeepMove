@@ -54,7 +54,7 @@ The codes contain four network model (simple, simple_long, attn_avg_long_user, a
 > ```
 Specify saving path:
 > ```python
-> python main.py --model_mode=attn_local_long --pretrain=0 --data_path=../data/Gowalla/ --data_name=gowalla --save_path=../results_gowalla/ > ../results_gowalla/out
+> python main.py --model_mode=attn_avg_long_user --pretrain=0 --data_path=../data/LA/ --data_name=foursquare_la --save_path=../results_la/attn_avg_long_user/ > ../results_la/attn_avg_long_user/out
 > ```
 
 Other parameters (refer to [main.py](https://github.com/vonfeng/DeepMove/blob/master/codes/main.py)):

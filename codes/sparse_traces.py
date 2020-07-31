@@ -141,13 +141,13 @@ class DataFoursquare(object):
         for u in self.user_filter3:
             sessions = self.data_filter[u]['sessions']  # filtered sessions
             if u not in self.uid_list:
-                self.uid_list[u] = [len(self.uid_list), len(sessions)]
+                self.uid_list[u] = [len(self.uid_list), len(sessions)]  # uid, number of sessions
             for sid in sessions:
-                poi = [p[0] for p in sessions[sid]]
+                poi = [p[0] for p in sessions[sid]]  # p = [pid, tmd]
                 for p in poi:
                     if p not in self.vid_list:
                         self.vid_list_lookup[len(self.vid_list)] = p
-                        self.vid_list[p] = [len(self.vid_list), 1]
+                        self.vid_list[p] = [len(self.vid_list), 1]  # vid, number of visits
                     else:
                         self.vid_list[p][1] += 1
 
@@ -194,7 +194,7 @@ class DataFoursquare(object):
             test_id = sessions_id[split_id:]
             pred_len = sum([len(sessions_tran[i]) - 1 for i in train_id])
             valid_len = sum([len(sessions_tran[i]) - 1 for i in test_id])
-            train_loc = {}  # vid: number of visits
+            train_loc = {}  # vid:number of visits
             for i in train_id:
                 for sess in sessions_tran[i]:  # [vid, tid]
                     if sess[0] in train_loc:
