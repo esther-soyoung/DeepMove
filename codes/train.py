@@ -210,16 +210,6 @@ def generate_input_long_history(data_neural, mode, candidate=None):
             trace['loc'] = Variable(torch.LongTensor(loc_np))
             trace['tim'] = Variable(torch.LongTensor(tim_np))
             trace['target'] = Variable(torch.LongTensor(target))
-            print('------------------------------')
-            print('session length %d' %len(session))
-            print('loc length %d' %np.array([s[0] for s in loc_tim]).shape)
-            print('tim length %d' %np.array([s[1] for s in loc_tim]).shape)
-            print('target length %d' %target.shape)
-            print([s[0] for s in session])
-            print(np.array([s[0] for s in loc_tim]))
-            print(np.array([s[1] for s in loc_tim]))
-            print(target)
-            print('------------------------------')
             data_train[u][i] = trace  # history_loc, history_tim, history_count, loc
         train_idx[u] = train_id
     return data_train, train_idx
