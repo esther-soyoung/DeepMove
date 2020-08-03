@@ -211,9 +211,11 @@ def generate_input_long_history(data_neural, mode, candidate=None):
             trace['tim'] = Variable(torch.LongTensor(tim_np))
             trace['target'] = Variable(torch.LongTensor(target))
             print('------------------------------')
+            print('session length %d' %session.shape)
             print('loc length %d' %np.array([s[0] for s in loc_tim]).shape)
             print('tim length %d' %np.array([s[1] for s in loc_tim]).shape)
             print('target length %d' %target.shape)
+            print([s[0] for s in session])
             print(np.array([s[0] for s in loc_tim]))
             print(np.array([s[1] for s in loc_tim]))
             print(target)
@@ -259,11 +261,11 @@ def get_acc(target, scores):
     for i, p in enumerate(predx):
         t = target[i]
         if t in p[:10] and t > 0:
-            acc[0] += 1
+            acc[0] += 1  # top10
         if t in p[:5] and t > 0:
-            acc[1] += 1
+            acc[1] += 1  # top5
         if t == p[0] and t > 0:
-            acc[2] += 1
+            acc[2] += 1  # top1
     return acc
 
 
