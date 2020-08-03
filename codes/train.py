@@ -214,7 +214,6 @@ def generate_input_long_history(data_neural, mode, candidate=None):
             print('loc length %d' %np.array([s[0] for s in loc_tim]).shape)
             print('tim length %d' %np.array([s[1] for s in loc_tim]).shape)
             print('target length %d' %target.shape)
-            print('------------------------------')
             print(np.array([s[0] for s in loc_tim]))
             print(np.array([s[1] for s in loc_tim]))
             print(target)
