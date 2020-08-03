@@ -5,6 +5,7 @@ from __future__ import division
 import torch
 from torch.autograd import Variable
 
+import sys
 import numpy as np
 import cPickle as pickle
 from collections import deque, Counter
@@ -327,6 +328,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         print(scores)
         print(target)
         print('--------------------------')
+        sys.stdout.flush()
+        sys.exit()
 
         if mode == 'train':
             loss.backward()
