@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+import sys
 import os
 import json
 import time
@@ -90,6 +91,7 @@ def run(args):
     print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                        len([y for x in train_idx for y in train_idx[x]]),
                                                        len([y for x in test_idx for y in test_idx[x]])))
+    sys.exit()
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
     os.mkdir(SAVE_PATH + tmp_path)
