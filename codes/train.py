@@ -323,6 +323,10 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         if scores.data.size()[0] > target.data.size()[0]:
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
+        print('-----scores vs target-----')
+        print(scores)
+        print(target)
+        print('--------------------------')
 
         if mode == 'train':
             loss.backward()
