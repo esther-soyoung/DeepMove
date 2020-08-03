@@ -87,8 +87,6 @@ def run(args):
             data_test, test_idx = generate_input_long_history2(parameters.data_neural, 'test', candidate=candidate)
         else:
             data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
-            sys.stdout.flush()
-            sys.exit()
             data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate)
 
     print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,

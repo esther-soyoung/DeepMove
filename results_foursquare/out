@@ -1,5 +1,0 @@
-***************start training***************
-model_mode:attn_local_long history_mode:avg users:886
-users:886 markov:0.0825511766237 train:6745 test:2126
-==>Test Acc:0.1453 Loss:6.9359
-single epoch time cost:231.215636015
