@@ -180,9 +180,9 @@ def generate_input_long_history(data_neural, mode, candidate=None):
             if mode == 'test':
                 test_id = data_neural[u]['train']
                 for tt in test_id:
-                    history.extend([(s[0], s[1]) for s in sessions[tt]])
+                    history.extend([(s[0], s[1]) for s in sessions[tt]])  # train records s
             for j in range(c):
-                history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])  # 누적 [vid, tid]
+                history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
 
             history_tim = [t[1] for t in history]
             history_count = [1]  # frequency of tids
@@ -210,6 +210,15 @@ def generate_input_long_history(data_neural, mode, candidate=None):
             trace['loc'] = Variable(torch.LongTensor(loc_np))
             trace['tim'] = Variable(torch.LongTensor(tim_np))
             trace['target'] = Variable(torch.LongTensor(target))
+            print('------------------------------')
+            print('loc length %d' %np.array([s[0] for s in loc_tim]).shape)
+            print('tim length %d' %np.array([s[1] for s in loc_tim]).shape)
+            print('target length %d' %target.shape)
+            print('------------------------------')
+            print(np.array([s[0] for s in loc_tim]))
+            print(np.array([s[1] for s in loc_tim]))
+            print(target)
+            print('------------------------------')
             data_train[u][i] = trace  # history_loc, history_tim, history_count, loc
         train_idx[u] = train_id
     return data_train, train_idx
@@ -298,12 +307,12 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     users_acc = {}
     for c in range(queue_len):
         optimizer.zero_grad()
-        u, i = run_queue.popleft()
+        u, i = run_queue.popleft()  # uid, train session id
         if u not in users_acc:
             users_acc[u] = [0, 0]
         loc = data[u][i]['loc'].cuda()
         tim = data[u][i]['tim'].cuda()
-        target = data[u][i]['target'].cuda()  # [vid]
+        target = data[u][i]['target'].cuda()  # [vid], 정답
         uid = Variable(torch.LongTensor([u])).cuda()
 
         if 'attn' in mode2:
