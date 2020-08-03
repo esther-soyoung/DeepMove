@@ -8,6 +8,7 @@ import torch.optim as optim
 
 import sys
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 import json
 import time
 import argparse
@@ -91,6 +92,7 @@ def run(args):
     print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                        len([y for x in train_idx for y in train_idx[x]]),
                                                        len([y for x in test_idx for y in test_idx[x]])))
+    sys.stdout.flush()
     sys.exit()
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
@@ -184,7 +186,6 @@ class Settings(object):
 if __name__ == '__main__':
     np.random.seed(1)
     torch.manual_seed(1)
-    os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--loc_emb_size', type=int, default=500, help="location embeddings size")
