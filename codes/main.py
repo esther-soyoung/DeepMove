@@ -87,13 +87,13 @@ def run(args):
             data_test, test_idx = generate_input_long_history2(parameters.data_neural, 'test', candidate=candidate)
         else:
             data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
+            sys.stdout.flush()
+            sys.exit()
             data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate)
 
     print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                        len([y for x in train_idx for y in train_idx[x]]),
                                                        len([y for x in test_idx for y in test_idx[x]])))
-    sys.stdout.flush()
-    sys.exit()
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
     os.mkdir(SAVE_PATH + tmp_path)
