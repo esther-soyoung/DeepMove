@@ -185,6 +185,13 @@ def generate_input_long_history(data_neural, mode, candidate=None):
             for j in range(c):
                 history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
 
+            print(np.array([s[0] for s in session]))
+            print(target)
+            print([(s[0], s[1]) for s in sessions[train_id[c-1]]])
+            print(history)
+            sys.stdout.flush()
+            sys.exit()
+
             history_tim = [t[1] for t in history]
             history_count = [1]  # frequency of tids
             last_t = history_tim[0]
