@@ -330,11 +330,14 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
 
         _l = [l for l in data[u][i]['loc'].data]
         _t = [t for t in data[u][i]['tim'].data]
-        x = zip(_l, _t)
+
+        x = zip(data[u][i]['loc'].data.tolist(), data[u][i]['tim'].data.tolist())
         print(x)
+        print()
+        ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].data.numpy())])
+        print(ww)
         sys.stdout.flush()
         sys.exit()
-        ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].data.numpy())])
         w.write(ww + '\n')
 
         if mode == 'train':
