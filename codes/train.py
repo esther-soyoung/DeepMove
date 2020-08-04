@@ -251,6 +251,8 @@ def get_acc(target, scores):
     acc = np.zeros((3, 1))
     for i, p in enumerate(predx):
         t = target[i]
+        print(t)
+        print(p)
         if t in p[:10] and t > 0:
             acc[0] += 1  # top10
         if t in p[:5] and t > 0:
@@ -297,7 +299,9 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     queue_len = len(run_queue)
 
     users_acc = {}
-    w = open('train_test.tsv', 'w')
+    w = open('test_data.tsv', 'w')
+    ww = '\t'.join(['uid', 'input', 'target', 'prediction'])
+    w.write(ww + '\n')
     for c in range(queue_len):
         optimizer.zero_grad()
         u, i = run_queue.popleft()  # uid, train session id
@@ -321,14 +325,14 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         elif mode2 == 'attn_local_long':
             target_len = target.data.size()[0]
             scores = model(loc, tim, target_len)
-        x = zip(loc, tim)
-        ww = '\t'.join([u, x, target])
-        w.write(ww + '\n')
-    w.close()
 
         if scores.data.size()[0] > target.data.size()[0]:
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
+
+        x = zip(loc, tim)
+        ww = '\t'.join([u, x, target, scores])
+        w.write(ww + '\n')
 
         if mode == 'train':
             loss.backward()
@@ -346,6 +350,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             acc = get_acc(target, scores)
             users_acc[u][1] += acc[2]
         total_loss.append(loss.data.cpu().numpy()[0])
+        break
+    w.close()
 
     avg_loss = np.mean(total_loss, dtype=np.float64)
     if mode == 'train':
