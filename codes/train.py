@@ -247,7 +247,6 @@ def get_acc(target, scores):
     """target and scores are torch cuda Variable"""
     target = target.data.cpu().numpy()
     val, idxx = scores.data.topk(10, 1)  # top 10 predictions
-    print(idxx)
     predx = idxx.cpu().numpy()
     acc = np.zeros((3, 1))
     for i, p in enumerate(predx):  # enumerate for the number of targets
