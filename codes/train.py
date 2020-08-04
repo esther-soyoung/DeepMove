@@ -328,7 +328,10 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
 
-        x = zip(data[u][i]['loc'].data.numpy(), data[u][i]['tim'].data.numpy())
+        x = zip(data[u][i]['loc'].data, data[u][i]['tim'].data)
+        print(x)
+        sys.stdout.flush()
+        sys.exit()
         ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].data.numpy())])
         w.write(ww + '\n')
 
