@@ -328,8 +328,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
 
-        x = zip(data[u][i]['loc'], data[u][i]['tim'])
-        ww = '\t'.join([str(u), str(x), str(data[u][i]['target'])])
+        x = zip(data[u][i]['loc'].cuda().numpy(), data[u][i]['tim'].cuda().numpy())
+        ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].cuda().numpy())])
         w.write(ww + '\n')
 
         if mode == 'train':
