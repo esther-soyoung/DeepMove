@@ -331,7 +331,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         loss = criterion(scores, target)
 
         x = zip(loc, tim)
-        ww = '\t'.join([u, x, target, scores])
+        ww = '\t'.join([str(u), str(x), str(target), str(scores)])
         w.write(ww + '\n')
 
         if mode == 'train':
