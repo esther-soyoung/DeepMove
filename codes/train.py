@@ -246,10 +246,14 @@ def generate_queue(train_idx, mode, mode2):
 def get_acc(target, scores):
     """target and scores are torch cuda Variable"""
     target = target.data.cpu().numpy()
-    val, idxx = scores.data.topk(10, 1)
+    val, idxx = scores.data.topk(10, 1)  # top 10 predictions
+    print(val)
+    print(idxx)
+    sys.stdout.flush()
+    sys.exit()
     predx = idxx.cpu().numpy()
     acc = np.zeros((3, 1))
-    for i, p in enumerate(predx):
+    for i, p in enumerate(predx):  # enumerate for the number of targets
         t = target[i]
         print(t)
         print(p)
@@ -300,7 +304,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
 
     users_acc = {}
     w = open('test_data.tsv', 'w')
-    ww = '\t'.join(['uid', 'input', 'target', 'prediction'])
+    ww = '\t'.join(['uid', 'input', 'target'])
     w.write(ww + '\n')
     for c in range(queue_len):
         optimizer.zero_grad()
@@ -330,8 +334,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
 
-        x = zip(loc, tim)
-        ww = '\t'.join([str(u), str(x), str(target), str(scores)])
+        x = zip(data[u][i]['loc'], data[u][i]['tim'])
+        ww = '\t'.join([str(u), str(x), str(data[u][i]['target'])])
         w.write(ww + '\n')
 
         if mode == 'train':
