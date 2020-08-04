@@ -297,6 +297,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     queue_len = len(run_queue)
 
     users_acc = {}
+    w = open('train_test.tsv', 'w')
     for c in range(queue_len):
         optimizer.zero_grad()
         u, i = run_queue.popleft()  # uid, train session id
@@ -320,16 +321,14 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         elif mode2 == 'attn_local_long':
             target_len = target.data.size()[0]
             scores = model(loc, tim, target_len)
+        x = zip(loc, tim)
+        ww = '\t'.join([u, x, target])
+        w.write(ww + '\n')
+    w.close()
 
         if scores.data.size()[0] > target.data.size()[0]:
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
-        print('-----scores vs target-----')
-        print(scores)
-        print(target)
-        print('--------------------------')
-        sys.stdout.flush()
-        sys.exit()
 
         if mode == 'train':
             loss.backward()
