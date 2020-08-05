@@ -307,7 +307,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             users_acc[u] = [0, 0]
         #x = zip(data[u][i]['loc'].data.tolist(), data[u][i]['tim'].data.tolist())
         x = data[u][i]['tim'].data.tolist()
-        print(x)
+        xx = [i[0] for i in x]
+        print(xx)
         sys.stdout.flush()
         sys.exit()
         loc = data[u][i]['loc'].cuda()
