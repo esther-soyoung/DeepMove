@@ -328,10 +328,10 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
 
-        x1 = [i[0] for i in data[u][i]['loc'].data.tolist()]
+        x1 = [j[0] for j in data[u][i]['loc'].data.tolist()]
         print(x1)
         print()
-        x2 = [i[0] for i in data[u][i]['tim'].data.tolist()]
+        x2 = [j[0] for j in data[u][i]['tim'].data.tolist()]
         print(x2)
         sys.stdout.flus()
         sys.exit()
