@@ -305,12 +305,6 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         u, i = run_queue.popleft()  # uid, train session id
         if u not in users_acc:
             users_acc[u] = [0, 0]
-        #x = zip(data[u][i]['loc'].data.tolist(), data[u][i]['tim'].data.tolist())
-        x = data[u][i]['tim'].data.tolist()
-        xx = [i[0] for i in x]
-        print(xx)
-        sys.stdout.flush()
-        sys.exit()
         loc = data[u][i]['loc'].cuda()
         tim = data[u][i]['tim'].cuda()
         target = data[u][i]['target'].cuda()  # [vid], 정답
@@ -334,13 +328,10 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
 
-        x = zip(data[u][i]['loc'].data.tolist(), data[u][i]['tim'].data.tolist())
-        print(x)
-        print()
+        x1 = [i[0] for i in data[u][i]['loc'].data.tolist()]
+        x2 = [i[0] for i in data[u][i]['tim'].data.tolist()]
+        x = zip(x1, x2)
         ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].data.numpy())])
-        print(ww)
-        sys.stdout.flush()
-        sys.exit()
         w.write(ww + '\n')
 
         if mode == 'train':
