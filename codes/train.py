@@ -176,6 +176,7 @@ def generate_input_long_history(data_neural, mode, candidate=None):
                 continue
             session = sessions[i]  # [[vid, tid]]
             target = np.array([s[0] for s in session[1:]])  # [vid]
+            target_tim = np.array([s[1] for s in session[1:]])  # [tid]
 
             history = []
             if mode == 'test':
@@ -211,6 +212,7 @@ def generate_input_long_history(data_neural, mode, candidate=None):
             trace['loc'] = Variable(torch.LongTensor(loc_np))
             trace['tim'] = Variable(torch.LongTensor(tim_np))
             trace['target'] = Variable(torch.LongTensor(target))
+            trace['target_tim'] = Variable(torch.LongTensor(target_tim))
             data_train[u][i] = trace  # history_loc, history_tim, history_count, loc
         train_idx[u] = train_id
     return data_train, train_idx
@@ -331,7 +333,11 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         x1 = [j[0] for j in data[u][i]['loc'].data.tolist()]
         x2 = [j[0] for j in data[u][i]['tim'].data.tolist()]
         x = zip(x1, x2)
-        ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].data.numpy())])
+        y1 = [j[0] for j in data[u][i]['target'].data.tolist()]
+        y2 = [j[0] for j in data[u][i]['target_tim'].data.tolist()]
+        y = zip(y1, y2)
+        # ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].data.numpy())])
+        ww = '\t'.join([str(u), str(x), str(y)])
         w.write(ww + '\n')
 
         if mode == 'train':
