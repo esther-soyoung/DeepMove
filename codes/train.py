@@ -298,7 +298,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
 
     users_acc = {}
     w = open('test_data.tsv', 'w')
-    ww = '\t'.join(['uid', 'input', 'target'])
+    ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
     w.write(ww + '\n')
     for c in range(queue_len):
         optimizer.zero_grad()
@@ -350,7 +350,6 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             acc = get_acc(target, scores)
             users_acc[u][1] += acc[2]
         total_loss.append(loss.data.cpu().numpy()[0])
-        break
     w.close()
 
     avg_loss = np.mean(total_loss, dtype=np.float64)
