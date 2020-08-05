@@ -329,7 +329,12 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         loss = criterion(scores, target)
 
         x1 = [i[0] for i in data[u][i]['loc'].data.tolist()]
+        print(x1)
+        print()
         x2 = [i[0] for i in data[u][i]['tim'].data.tolist()]
+        print(x2)
+        sys.stdout.flus()
+        sys.exit()
         x = zip(x1, x2)
         ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].data.numpy())])
         w.write(ww + '\n')
