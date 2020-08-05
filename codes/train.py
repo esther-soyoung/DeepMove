@@ -333,8 +333,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         x1 = [j[0] for j in data[u][i]['loc'].data.tolist()]
         x2 = [j[0] for j in data[u][i]['tim'].data.tolist()]
         x = zip(x1, x2)
-        y1 = [j[0] for j in data[u][i]['target'].data.tolist()]
-        y2 = [j[0] for j in data[u][i]['target_tim'].data.tolist()]
+        y1 = data[u][i]['target'].data.tolist()
+        y2 = data[u][i]['target_tim'].data.tolist()
         y = zip(y1, y2)
         # ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].data.numpy())])
         ww = '\t'.join([str(u), str(x), str(y)])
