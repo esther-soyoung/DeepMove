@@ -306,7 +306,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         if u not in users_acc:
             users_acc[u] = [0, 0]
         #x = zip(data[u][i]['loc'].data.tolist(), data[u][i]['tim'].data.tolist())
-        x = data[u][i]['tim'].data.tolist()
+        x = data[u][i]['tim'].data
         print(x)
         sys.stdout.flush()
         sys.exit()
