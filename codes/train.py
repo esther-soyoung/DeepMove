@@ -165,13 +165,19 @@ def generate_input_long_history2(data_neural, mode, candidate=None):
     return data_train, train_idx
 
 
-def generate_input_long_history(data_neural, mode, candidate=None):
+def generate_input_long_history(data_neural, mode, candidate=None, name=None, raw_uid=None, raw_sess=None):
     data_train = {}
     train_idx = {}
+    if name:
+        w = open(name+'.tsv', 'w')
+        ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
+        w.write(ww + '\n')
     if candidate is None:
         candidate = data_neural.keys()  # uids
     for u in candidate:
+        raw_u = raw_uid[u]
         sessions = data_neural[u]['sessions']  # {sid: [[vid, tid]]}
+        raw_sessions = raw_sess[raw_u]['sessions']
         train_id = data_neural[u][mode]  # train_id | test_id
         data_train[u] = {}
         for c, i in enumerate(train_id):
@@ -180,15 +186,20 @@ def generate_input_long_history(data_neural, mode, candidate=None):
                 continue
             session = sessions[i]  # [[vid, tid]]
             target = np.array([s[0] for s in session[1:]])  # [vid]
-            target_tim = np.array([s[1] for s in session[1:]])  # [tid]
+            raw_s = raw_sessions[i]
+            raw_target = [[s[0] for s in raw_s[1:]]]  # [vid]
+            raw_target_tim = [[s[1] for s in raw_s[1:]]]  # [tid]
 
             history = []
+            raw_history = []
             if mode == 'test':
                 test_id = data_neural[u]['train']
                 for tt in test_id:
                     history.extend([(s[0], s[1]) for s in sessions[tt]])  # train records s
+                    raw_history.extend([(s[0], s[1]) for s in raw_sess[tt]])  # train records s
             for j in range(c):
                 history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
+                raw_history.extend([(s[0], s[1]) for s in raw_sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
 
             history_tim = [t[1] for t in history]
             history_count = [1]  # frequency of tids
@@ -210,15 +221,25 @@ def generate_input_long_history(data_neural, mode, candidate=None):
             trace['history_count'] = history_count
 
             loc_tim = history  # [vid, tid]
+            raw_loc_tim = raw_history  # [vid, tid]
             loc_tim.extend([(s[0], s[1]) for s in session[:-1]])  # until recently
+            raw_loc_tim.extend([(s[0], s[1]) for s in raw_s[:-1]])  # until recently
             loc_np = np.reshape(np.array([s[0] for s in loc_tim]), (len(loc_tim), 1))
             tim_np = np.reshape(np.array([s[1] for s in loc_tim]), (len(loc_tim), 1))
+            raw_loc_np = [s[0] for s in raw_loc_tim]
+            raw_tim_np = [s[1] for s in raw_loc_tim]
             trace['loc'] = Variable(torch.LongTensor(loc_np))
             trace['tim'] = Variable(torch.LongTensor(tim_np))
             trace['target'] = Variable(torch.LongTensor(target))
-            trace['target_tim'] = Variable(torch.LongTensor(target_tim))
             data_train[u][i] = trace  # history_loc, history_tim, history_count, loc
+
+            if name:
+                x = zip(raw_loc_np, raw_tim_np)
+                y = zip(raw_target, raw_target_tim)
+                ww = '\t'.join([str(raw_u), str(x), str(y)])
+                w.write(ww + '\n')
         train_idx[u] = train_id
+    w.close()
     return data_train, train_idx
 
 
@@ -289,7 +310,7 @@ def get_hint(target, scores, users_visited):
     return hint, count
 
 
-def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, name=None):
+def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     run_queue = None
@@ -303,10 +324,6 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     queue_len = len(run_queue)
 
     users_acc = {}
-    if name:
-        w = open(name+'.tsv', 'w')
-        ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
-        w.write(ww + '\n')
     for c in range(queue_len):
         optimizer.zero_grad()
         u, i = run_queue.popleft()  # uid, train session id
@@ -316,18 +333,6 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         tim = data[u][i]['tim'].cuda()
         target = data[u][i]['target'].cuda()  # [vid], 정답
         uid = Variable(torch.LongTensor([u])).cuda()
-
-        if name:
-            x1 = [j[0] for j in data[u][i]['loc'].data.tolist()]
-            x2 = [j[0] for j in data[u][i]['tim'].data.tolist()]
-            x = zip(x1, x2)
-            y1 = data[u][i]['target'].data.tolist()
-            y2 = data[u][i]['target_tim'].data.tolist()
-            y = zip(y1, y2)
-            # ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].data.numpy())])
-            ww = '\t'.join([str(u), str(x), str(y)])
-            w.write(ww + '\n')
-            continue
 
         if 'attn' in mode2:
             history_loc = data[u][i]['history_loc'].cuda()
@@ -363,7 +368,6 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             acc = get_acc(target, scores)
             users_acc[u][1] += acc[2]
         total_loss.append(loss.data.cpu().numpy()[0])
-    w.close()
 
     avg_loss = np.mean(total_loss, dtype=np.float64)
     if mode == 'train':
