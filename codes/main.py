@@ -48,6 +48,7 @@ def run(args):
     elif parameters.model_mode == 'attn_local_long':
         model = TrajPreLocalAttnLong(parameters=parameters).cuda()
     if args.pretrain == 1:
+        #model.load_state_dict(torch.load("../results_la/" + args.model_mode + "/res.m"))
         model.load_state_dict(torch.load("../pretrain/" + args.model_mode + "/res.m"))
 
     if 'max' in parameters.model_mode:
@@ -151,6 +152,7 @@ def run(args):
 
 
 def load_pretrained_model(config):
+    #res = json.load(open("../results_la/" + config.model_mode + "/res.txt"))
     res = json.load(open("../pretrain/" + config.model_mode + "/res.txt"))
     args = Settings(config, res["args"])
     return args

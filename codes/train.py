@@ -299,7 +299,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     queue_len = len(run_queue)
 
     users_acc = {}
-    w = open('test_data_la.tsv', 'w')
+    w = open('test_data_ny.tsv', 'w')
     ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
     w.write(ww + '\n')
     for c in range(queue_len):
