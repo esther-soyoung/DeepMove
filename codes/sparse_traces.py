@@ -52,7 +52,7 @@ class DataFoursquare(object):
         self.words_dict = None
         self.data_filter = {}
         self.user_filter3 = None
-        self.uid_list = {}
+        self.uid_list = {}  # key: raw uid, val: [int uid, number of sessions]
         self.vid_list = {'unk': [0, -1]}  # key: raw pid
         self.vid_list_lookup = {}  # key: int index, val: raw pid
         self.vid_lookup = {}
@@ -75,7 +75,7 @@ class DataFoursquare(object):
 
     # ########### 3.0 basically filter users based on visit length and other statistics
     def filter_users_by_length(self):
-        # filter out uses with less than 10 records
+        # filter out users with less than 10 records
         uid_3 = [x for x in self.data if len(self.data[x]) > self.trace_len_min]
         # sort users by the number of records, descending order
         pick3 = sorted([(x, len(self.data[x])) for x in uid_3], key=lambda x: x[1], reverse=True)
@@ -230,7 +230,8 @@ class DataFoursquare(object):
             center = np.repeat(center, axis=0, repeats=len(lon_lat))
             rg = np.sqrt(np.mean(np.sum((lon_lat - center) ** 2, axis=1, keepdims=True), axis=0))[0]
 
-            self.data_neural[self.uid_list[u][0]] = {'sessions': sessions_tran, 'train': train_id, 'test': test_id,
+            self.data_neural[self.uid_list[u][0]] = {'sessions': sessions_tran, 'raw_sessions': sessions,
+                                                     'train': train_id, 'test': test_id,
                                                      'pred_len': pred_len, 'valid_len': valid_len,
                                                      'train_loc': train_loc, 'explore': location_ratio,
                                                      'entropy': entropy, 'rg': rg}

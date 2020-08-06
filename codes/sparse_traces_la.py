@@ -41,7 +41,7 @@ class DataFoursquareLA(object):
         self.TWITTER_PATH = tmp_path + 'la_tweets1100000_cikm.txt'
         self.VENUES_PATH = tmp_path + 'venues_all.txt'
         self.SAVE_PATH = tmp_path
-        self.save_name = 'foursquare_la'
+        self.save_name = 'foursquare_la2'
 
         self.trace_len_min = trace_min
         self.location_global_visit_min = global_visit
@@ -75,8 +75,8 @@ class DataFoursquareLA(object):
     def load_trajectory_from_tweets(self):
         with open(self.TWITTER_PATH) as fid:
             for i, line in enumerate(fid):
-                _, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
-                pid = self.pois[(lon, lat)]
+                pid, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
+                # pid = self.pois[(lon, lat)]
                 # Mon Sep 29 20:29:55 CDT 2014
                 tim = tim.replace('CDT ', '').replace('CST ', '')
                 tim = time.strptime(tim, "%a %b %d %H:%M:%S %Y")
@@ -199,8 +199,8 @@ class DataFoursquareLA(object):
     def load_venues(self):
         with open(self.TWITTER_PATH, 'r') as fid:
             for line in fid:
-                _, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
-                pid = self.pois[(lon, lat)]
+                pid, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
+                #pid = self.pois[(lon, lat)]
                 self.pid_loc_lat[pid] = [float(lon), float(lat)]
 
     def venues_lookup(self):
