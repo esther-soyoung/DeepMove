@@ -189,8 +189,8 @@ def generate_input_long_history(data_neural, mode, candidate=None, name=None, ra
             target = np.array([s[0] for s in session[1:]])  # [vid]
             if raw_sess:
                 raw_s = raw_sessions[i]
-                raw_target = [[s[0] for s in raw_s[1:]]]  # [vid]
-                raw_target_tim = [[s[1] for s in raw_s[1:]]]  # [tid]
+                raw_target = [s[0] for s in raw_s[1:]]  # [vid]
+                raw_target_tim = [s[1] for s in raw_s[1:]]  # [tid]
 
             history = []
             if raw_sess:
