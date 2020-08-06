@@ -24,6 +24,9 @@ class RnnParameterData(object):
         self.uid_list = data['uid_list']
         self.data_neural = data['data_neural']
         self.data_filter = data['data_filter']
+        self.uid_lookup = {}
+        for k, v in self.uid_list.items():
+            self.uid_lookup[v[0]] = k
 
         self.tim_size = 48
         self.loc_size = len(self.vid_list)
