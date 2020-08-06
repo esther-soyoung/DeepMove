@@ -23,6 +23,7 @@ class RnnParameterData(object):
         self.vid_list = data['vid_list']
         self.uid_list = data['uid_list']
         self.data_neural = data['data_neural']
+        self.data_filter = data['data_filter']
 
         self.tim_size = 48
         self.loc_size = len(self.vid_list)
@@ -285,7 +286,7 @@ def get_hint(target, scores, users_visited):
     return hint, count
 
 
-def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None):
+def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, write=False):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     run_queue = None
@@ -299,9 +300,10 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     queue_len = len(run_queue)
 
     users_acc = {}
-    w = open('test_data_ny.tsv', 'w')
-    ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
-    w.write(ww + '\n')
+    if write:
+        w = open('test_data_ny.tsv', 'w')
+        ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
+        w.write(ww + '\n')
     for c in range(queue_len):
         optimizer.zero_grad()
         u, i = run_queue.popleft()  # uid, train session id
@@ -311,6 +313,18 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         tim = data[u][i]['tim'].cuda()
         target = data[u][i]['target'].cuda()  # [vid], 정답
         uid = Variable(torch.LongTensor([u])).cuda()
+
+        if write:
+            x1 = [j[0] for j in data[u][i]['loc'].data.tolist()]
+            x2 = [j[0] for j in data[u][i]['tim'].data.tolist()]
+            x = zip(x1, x2)
+            y1 = data[u][i]['target'].data.tolist()
+            y2 = data[u][i]['target_tim'].data.tolist()
+            y = zip(y1, y2)
+            # ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].data.numpy())])
+            ww = '\t'.join([str(u), str(x), str(y)])
+            w.write(ww + '\n')
+            continue
 
         if 'attn' in mode2:
             history_loc = data[u][i]['history_loc'].cuda()
@@ -329,16 +343,6 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         if scores.data.size()[0] > target.data.size()[0]:
             scores = scores[-target.data.size()[0]:]
         loss = criterion(scores, target)
-
-        x1 = [j[0] for j in data[u][i]['loc'].data.tolist()]
-        x2 = [j[0] for j in data[u][i]['tim'].data.tolist()]
-        x = zip(x1, x2)
-        y1 = data[u][i]['target'].data.tolist()
-        y2 = data[u][i]['target_tim'].data.tolist()
-        y = zip(y1, y2)
-        # ww = '\t'.join([str(u), str(x), str(data[u][i]['target'].data.numpy())])
-        ww = '\t'.join([str(u), str(x), str(y)])
-        w.write(ww + '\n')
 
         if mode == 'train':
             loss.backward()
