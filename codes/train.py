@@ -162,17 +162,14 @@ def generate_input_long_history2(data_neural, mode, candidate=None):
     return data_train, train_idx
 
 
-def generate_input_long_history(data_neural, mode, candidate=None, idx=None):
+def generate_input_long_history(data_neural, mode, candidate=None):
     data_train = {}
     train_idx = {}
     if candidate is None:
         candidate = data_neural.keys()  # uids
     for u in candidate:
         sessions = data_neural[u]['sessions']  # {sid: [[vid, tid]]}
-        if idx:
-            train_id = idx
-        else:
-            train_id = data_neural[u][mode]  # train_id | test_id
+        train_id = data_neural[u][mode]  # train_id | test_id
         data_train[u] = {}
         for c, i in enumerate(train_id):
             trace = {}

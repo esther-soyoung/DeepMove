@@ -230,11 +230,11 @@ class DataFoursquare(object):
             center = np.repeat(center, axis=0, repeats=len(lon_lat))
             rg = np.sqrt(np.mean(np.sum((lon_lat - center) ** 2, axis=1, keepdims=True), axis=0))[0]
 
-            self.data_neural[self.uid_list[u][0]] = {'sessions': sessions_tran, 'raw_sessions': sessions,
-                                                     'train': train_id, 'test': test_id,
+            self.data_neural[self.uid_list[u][0]] = {'sessions': sessions_tran, 'train': train_id, 'test': test_id,
                                                      'pred_len': pred_len, 'valid_len': valid_len,
                                                      'train_loc': train_loc, 'explore': location_ratio,
-                                                     'entropy': entropy, 'rg': rg}
+                                                     'entropy': entropy, 'rg': rg,
+                                                     'raw_uid': u, 'raw_sessions': sessions}
 
     # ############# 6. save variables
     def get_parameters(self):
