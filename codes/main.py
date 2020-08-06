@@ -156,8 +156,10 @@ def run(args):
 
 
 def load_pretrained_model(config):
-    #res = json.load(open("../results_la/" + config.model_mode + "/res.txt"))
-    res = json.load(open("../pretrain/" + config.model_mode + "/res.txt"))
+    if 'la' in config.data_name:
+        res = json.load(open("../results_la/" + config.model_mode + "/res.txt"))
+    else:
+        res = json.load(open("../pretrain/" + config.model_mode + "/res.txt"))
     args = Settings(config, res["args"])
     return args
 
