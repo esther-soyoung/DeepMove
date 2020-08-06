@@ -200,7 +200,7 @@ def generate_input_long_history(data_neural, mode, candidate=None, name=None, ra
                 for tt in test_id:
                     history.extend([(s[0], s[1]) for s in sessions[tt]])  # train records s
                     if raw_sess:
-                        raw_history.extend([(s[0], s[1]) for s in raw_sess[tt]])  # train records s
+                        raw_history.extend([(s[0], s[1]) for s in raw_sessions[tt]])  # train records s
             for j in range(c):
                 history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
                 if raw_sess:
