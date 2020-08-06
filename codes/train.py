@@ -162,14 +162,17 @@ def generate_input_long_history2(data_neural, mode, candidate=None):
     return data_train, train_idx
 
 
-def generate_input_long_history(data_neural, mode, candidate=None):
+def generate_input_long_history(data_neural, mode, candidate=None, idx=None):
     data_train = {}
     train_idx = {}
     if candidate is None:
         candidate = data_neural.keys()  # uids
     for u in candidate:
         sessions = data_neural[u]['sessions']  # {sid: [[vid, tid]]}
-        train_id = data_neural[u][mode]  # train_id | test_id
+        if idx:
+            train_id = idx
+        else:
+            train_id = data_neural[u][mode]  # train_id | test_id
         data_train[u] = {}
         for c, i in enumerate(train_id):
             trace = {}
@@ -286,7 +289,7 @@ def get_hint(target, scores, users_visited):
     return hint, count
 
 
-def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, write=False, name=None):
+def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, name=None):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     run_queue = None
@@ -300,7 +303,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     queue_len = len(run_queue)
 
     users_acc = {}
-    if write:
+    if name:
         w = open(name+'.tsv', 'w')
         ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
         w.write(ww + '\n')
@@ -314,7 +317,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         target = data[u][i]['target'].cuda()  # [vid], 정답
         uid = Variable(torch.LongTensor([u])).cuda()
 
-        if write:
+        if name:
             x1 = [j[0] for j in data[u][i]['loc'].data.tolist()]
             x2 = [j[0] for j in data[u][i]['tim'].data.tolist()]
             x = zip(x1, x2)

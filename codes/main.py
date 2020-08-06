@@ -91,6 +91,7 @@ def run(args):
         else:
             data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
             data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate)
+            _data_test, _ = generate_input_history(parameters.data_filter, 'test', candidate=candidate, idx=test_idx)
 
     print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                        len([y for x in train_idx for y in train_idx[x]]),
@@ -109,6 +110,8 @@ def run(args):
         avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
                                                   optimizer, criterion, parameters.model_mode)
         print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
+        _, _, _ = run_simple(_data_test, test_idx, 'test', lr, parameters.clip, model,
+                                                  optimizer, criterion, parameters.model_mode, name=parameters.data_name)
 
         metrics['valid_loss'].append(avg_loss)
         metrics['accuracy'].append(avg_acc)
