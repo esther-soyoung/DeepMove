@@ -243,7 +243,8 @@ def generate_input_long_history(data_neural, mode, candidate=None, name=None, ra
                 ww = '\t'.join([str(raw_u), str(x), str(y)])
                 w.write(ww + '\n')
         train_idx[u] = train_id
-    w.close()
+    if name:
+        w.close()
     return data_train, train_idx
 
 
