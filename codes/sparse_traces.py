@@ -53,8 +53,8 @@ class DataFoursquare(object):
         self.data_filter = {}
         self.user_filter3 = None
         self.uid_list = {}
-        self.vid_list = {'unk': [0, -1]}
-        self.vid_list_lookup = {}
+        self.vid_list = {'unk': [0, -1]}  # key: raw pid
+        self.vid_list_lookup = {}  # key: int index, val: raw pid
         self.vid_lookup = {}
         self.pid_loc_lat = {}
         self.data_neural = {}

@@ -182,8 +182,8 @@ class Settings(object):
 
 
 if __name__ == '__main__':
-    np.random.seed(2017)
-    torch.manual_seed(2017)
+    np.random.seed(1)
+    torch.manual_seed(1)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--loc_emb_size', type=int, default=500, help="location embeddings size")
