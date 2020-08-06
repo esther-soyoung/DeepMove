@@ -75,8 +75,8 @@ class DataFoursquareLA(object):
     def load_trajectory_from_tweets(self):
         with open(self.TWITTER_PATH) as fid:
             for i, line in enumerate(fid):
-                pid, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
-                # pid = self.pois[(lon, lat)]
+                _, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
+                pid = self.pois[(lon, lat)]
                 # Mon Sep 29 20:29:55 CDT 2014
                 tim = tim.replace('CDT ', '').replace('CST ', '')
                 tim = time.strptime(tim, "%a %b %d %H:%M:%S %Y")
@@ -89,6 +89,9 @@ class DataFoursquareLA(object):
                     self.venues[pid] = 1
                 else:
                     self.venues[pid] += 1
+
+        import pdb
+        pdb.set_trace()
 
     # ########### 3.0 basically filter users based on visit length and other statistics
     def filter_users_by_length(self):
@@ -199,8 +202,8 @@ class DataFoursquareLA(object):
     def load_venues(self):
         with open(self.TWITTER_PATH, 'r') as fid:
             for line in fid:
-                pid, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
-                #pid = self.pois[(lon, lat)]
+                _, uid, lon, lat, tim, _, _, tweet, _, _, _, _, _ = line.strip('\r\n').split('')
+                pid = self.pois[(lon, lat)]
                 self.pid_loc_lat[pid] = [float(lon), float(lat)]
 
     def venues_lookup(self):
