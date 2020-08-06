@@ -90,9 +90,6 @@ class DataFoursquareLA(object):
                 else:
                     self.venues[pid] += 1
 
-        import pdb
-        pdb.set_trace()
-
     # ########### 3.0 basically filter users based on visit length and other statistics
     def filter_users_by_length(self):
         # average number of records per user
