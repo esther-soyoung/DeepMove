@@ -109,7 +109,8 @@ def run(args):
                                                   optimizer, criterion, parameters.model_mode)
         print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
         _, _, _ = run_simple(_data_test, _test_idx, 'test', lr, parameters.clip, model,
-                                                  optimizer, criterion, parameters.model_mode, write=True)
+                                                  optimizer, criterion, parameters.model_mode, write=True,
+                                                  name=parameters.data_name)
 
         metrics['valid_loss'].append(avg_loss)
         metrics['accuracy'].append(avg_acc)

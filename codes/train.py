@@ -286,7 +286,7 @@ def get_hint(target, scores, users_visited):
     return hint, count
 
 
-def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, write=False):
+def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, write=False, name=None):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     run_queue = None
@@ -301,7 +301,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
 
     users_acc = {}
     if write:
-        w = open('test_data_ny.tsv', 'w')
+        w = open(name+'.tsv', 'w')
         ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
         w.write(ww + '\n')
     for c in range(queue_len):
