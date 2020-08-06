@@ -175,9 +175,10 @@ def generate_input_long_history(data_neural, mode, candidate=None, name=None, ra
     if candidate is None:
         candidate = data_neural.keys()  # uids
     for u in candidate:
-        raw_u = raw_uid[u]
         sessions = data_neural[u]['sessions']  # {sid: [[vid, tid]]}
-        raw_sessions = raw_sess[raw_u]['sessions']
+        if raw_uid:
+            raw_u = raw_uid[u]
+            raw_sessions = raw_sess[raw_u]['sessions']
         train_id = data_neural[u][mode]  # train_id | test_id
         data_train[u] = {}
         for c, i in enumerate(train_id):
@@ -186,20 +187,24 @@ def generate_input_long_history(data_neural, mode, candidate=None, name=None, ra
                 continue
             session = sessions[i]  # [[vid, tid]]
             target = np.array([s[0] for s in session[1:]])  # [vid]
-            raw_s = raw_sessions[i]
-            raw_target = [[s[0] for s in raw_s[1:]]]  # [vid]
-            raw_target_tim = [[s[1] for s in raw_s[1:]]]  # [tid]
+            if raw_sess:
+                raw_s = raw_sessions[i]
+                raw_target = [[s[0] for s in raw_s[1:]]]  # [vid]
+                raw_target_tim = [[s[1] for s in raw_s[1:]]]  # [tid]
 
             history = []
-            raw_history = []
+            if raw_sess:
+                raw_history = []
             if mode == 'test':
                 test_id = data_neural[u]['train']
                 for tt in test_id:
                     history.extend([(s[0], s[1]) for s in sessions[tt]])  # train records s
-                    raw_history.extend([(s[0], s[1]) for s in raw_sess[tt]])  # train records s
+                    if raw_sess:
+                        raw_history.extend([(s[0], s[1]) for s in raw_sess[tt]])  # train records s
             for j in range(c):
                 history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
-                raw_history.extend([(s[0], s[1]) for s in raw_sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
+                if raw_sess:
+                    raw_history.extend([(s[0], s[1]) for s in raw_sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
 
             history_tim = [t[1] for t in history]
             history_count = [1]  # frequency of tids
@@ -221,19 +226,18 @@ def generate_input_long_history(data_neural, mode, candidate=None, name=None, ra
             trace['history_count'] = history_count
 
             loc_tim = history  # [vid, tid]
-            raw_loc_tim = raw_history  # [vid, tid]
             loc_tim.extend([(s[0], s[1]) for s in session[:-1]])  # until recently
-            raw_loc_tim.extend([(s[0], s[1]) for s in raw_s[:-1]])  # until recently
             loc_np = np.reshape(np.array([s[0] for s in loc_tim]), (len(loc_tim), 1))
             tim_np = np.reshape(np.array([s[1] for s in loc_tim]), (len(loc_tim), 1))
-            raw_loc_np = [s[0] for s in raw_loc_tim]
-            raw_tim_np = [s[1] for s in raw_loc_tim]
             trace['loc'] = Variable(torch.LongTensor(loc_np))
             trace['tim'] = Variable(torch.LongTensor(tim_np))
             trace['target'] = Variable(torch.LongTensor(target))
             data_train[u][i] = trace  # history_loc, history_tim, history_count, loc
-
-            if name:
+            if raw_sess:
+                raw_loc_tim = raw_history  # [vid, tid]
+                raw_loc_tim.extend([(s[0], s[1]) for s in raw_s[:-1]])  # until recently
+                raw_loc_np = [s[0] for s in raw_loc_tim]
+                raw_tim_np = [s[1] for s in raw_loc_tim]
                 x = zip(raw_loc_np, raw_tim_np)
                 y = zip(raw_target, raw_target_tim)
                 ww = '\t'.join([str(raw_u), str(x), str(y)])
