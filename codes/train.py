@@ -5,6 +5,10 @@ from __future__ import division
 import torch
 from torch.autograd import Variable
 
+import numpy as np
+import cPickle as pickle
+from collections import deque, Counter
+
 GRID_COUNT = 100
 def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon], y: [lat]. 100 by 100
     dXMax, dXMin, dYMax, dYMin = max(x), min(x), max(y), min(y)
