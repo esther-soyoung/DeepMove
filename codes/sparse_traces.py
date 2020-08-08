@@ -55,7 +55,7 @@ class DataFoursquare(object):
         self.uid_list = {}  # key: raw uid, val: [int uid, number of sessions]
         self.vid_list = {'unk': [0, -1]}  # key: raw pid
         self.vid_list_lookup = {}  # key: int index, val: raw pid
-        self.vid_lookup = {}
+        self.vid_lookup = {}  # key: vid, val: [float(lon), float(lat)]
         self.pid_loc_lat = {}
         self.data_neural = {}
 
@@ -233,8 +233,7 @@ class DataFoursquare(object):
             self.data_neural[self.uid_list[u][0]] = {'sessions': sessions_tran, 'train': train_id, 'test': test_id,
                                                      'pred_len': pred_len, 'valid_len': valid_len,
                                                      'train_loc': train_loc, 'explore': location_ratio,
-                                                     'entropy': entropy, 'rg': rg,
-                                                     'raw_uid': u, 'raw_sessions': sessions}
+                                                     'entropy': entropy, 'rg': rg}
 
     # ############# 6. save variables
     def get_parameters(self):
