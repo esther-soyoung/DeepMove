@@ -58,12 +58,13 @@ class RnnParameterData(object):
         self.uid_list = data['uid_list']  # key: raw uid, val: [int uid, number of sessions]
         self.data_neural = data['data_neural']
         self.data_filter = data['data_filter']  # key: raw uid, val: {sessions: {sid: [[raw pid, raw tim], ...]}, ...}
-        self.vid_loopkup = data['vid_lookup']  # key: int vid, val: [float(lon), float(lat)]
+        self.vid_lookup = data['vid_lookup']  # key: int vid, val: [float(lon), float(lat)]
         self.uid_lookup = {}
         for k, v in self.uid_list.items():
             self.uid_lookup[v[0]] = k
         self.raw_pid = self.vid_list.keys()
-        self._raw_xy = [self.vid_loopkup[self.vid_list[p[0]]] for p in self.raw_pid]
+        self._int_vid = [self.vid_list[p][0] for p in self.raw_pid]
+        self._raw_xy = [self.vid_loopkup[i] for i in self._int_vid]
         self.raw_x = [i[0] for i in self._raw_xy]
         self.raw_y = [i[1] for i in self._raw_xy]
         self.grid_lookup = geo_grade(self.raw_pid, self.raw_x, self.raw_y)[0]  # key: pid, val: grid id
