@@ -91,9 +91,9 @@ def run(args):
         else:
             data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
                                                                 # grid=parameters.grid_lookup)핑  # 학습부터 grid mapping
-            data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate)
-                                                              # name=parameters.data_name, raw_uid=parameters.uid_lookup,
-                                                              # raw_sess=parameters.data_filter)
+            data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate,
+                                                              name=parameters.data_name, raw_uid=parameters.uid_lookup,
+                                                              raw_sess=parameters.data_filter)
                                                               # grid = parameters.grid_lookup)  # 학습부터 grid mapping
 
     print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,

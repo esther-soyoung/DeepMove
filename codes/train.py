@@ -215,7 +215,7 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid=None, na
     data_train = {}
     train_idx = {}
     if name:
-        w = open(name+'.tsv', 'w')
+        w = open(name+'_grid.tsv', 'w')
         ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
         w.write(ww + '\n')
     if candidate is None:
