@@ -211,7 +211,7 @@ def generate_input_long_history2(data_neural, mode, candidate=None):
     return data_train, train_idx
 
 
-def generate_input_long_history(data_neural, mode, candidate=None, grid=None, name=None, raw_uid=None, raw_sess=None):
+def generate_input_long_history(data_neural, mode, candidate=None, grid_train=False, grid=None, name=None, raw_uid=None, raw_sess=None):
     data_train = {}
     train_idx = {}
     if name:
@@ -222,7 +222,7 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid=None, na
         candidate = data_neural.keys()  # uids
     for u in candidate:
         sessions = data_neural[u]['sessions']  # {sid: [[vid, tid]]}
-        if grid:
+        if grid_train:
             _sessions = {}
             for k, v in sessions.items():
                 _sessions[k] = [[grid[vt[0]], vt[1]] for vt in v]
@@ -290,6 +290,9 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid=None, na
                 raw_loc_np = [s[0] for s in raw_loc_tim]
                 raw_tim_np = [s[1] for s in raw_loc_tim]
                 x = zip(raw_loc_np, raw_tim_np)
+                if grid:
+                    grid_loc_np = [grid[i] for i in [s[0] for s in loc_tim]]
+                    x = zip(grid_loc_np, raw_tim_np)
                 y = zip(raw_target, raw_target_tim)
                 ww = '\t'.join([str(raw_u), str(x), str(y)])
                 w.write(ww + '\n')

@@ -89,12 +89,14 @@ def run(args):
             data_train, train_idx = generate_input_long_history2(parameters.data_neural, 'train', candidate=candidate)
             data_test, test_idx = generate_input_long_history2(parameters.data_neural, 'test', candidate=candidate)
         else:
-            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
-                                                                # grid=parameters.grid_lookup)핑  # 학습부터 grid mapping
+            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate,
+                                                                grid=parameters.grid_lookup)
+                                                                # grid_train=True)  # 학습부터 grid mapping
             data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate,
+                                                              grid=parameters.grid_lookup,
                                                               name=parameters.data_name, raw_uid=parameters.uid_lookup,
                                                               raw_sess=parameters.data_filter)
-                                                              # grid = parameters.grid_lookup)  # 학습부터 grid mapping
+                                                              # grid_train=True)  # 학습부터 grid mapping
 
     print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                        len([y for x in train_idx for y in train_idx[x]]),
