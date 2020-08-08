@@ -68,7 +68,7 @@ class RnnParameterData(object):
         self.raw_x = [i[0] for i in self._raw_xy]
         self.raw_y = [i[1] for i in self._raw_xy]
         self._raw_grid_lookup = geo_grade(self.raw_pid, self.raw_x, self.raw_y)[0]  # key: raw pid, val: grid id
-        self.grid_lookup = {}
+        self.grid_lookup = {}  # key: int vid, val: grid id
         for k, v in self.vid_list.items():
             if k == 'unk':
                 continue
@@ -211,7 +211,7 @@ def generate_input_long_history2(data_neural, mode, candidate=None):
     return data_train, train_idx
 
 
-def generate_input_long_history(data_neural, mode, candidate=None, name=None, raw_uid=None, raw_sess=None):
+def generate_input_long_history(data_neural, mode, candidate=None, grid=None, name=None, raw_uid=None, raw_sess=None):
     data_train = {}
     train_idx = {}
     if name:
@@ -222,6 +222,11 @@ def generate_input_long_history(data_neural, mode, candidate=None, name=None, ra
         candidate = data_neural.keys()  # uids
     for u in candidate:
         sessions = data_neural[u]['sessions']  # {sid: [[vid, tid]]}
+        if grid:
+            _sessions = {}
+            for k, v in sessions.items():
+                _sessions[k] = [[grid[vt[0]], vt[1]] for vt in v]
+            sessions = _sessions  # {sid: [[gid, tid]]}
         if raw_uid:
             raw_u = raw_uid[u]
             raw_sessions = raw_sess[raw_u]['sessions']

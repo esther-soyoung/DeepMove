@@ -89,8 +89,10 @@ def run(args):
             data_train, train_idx = generate_input_long_history2(parameters.data_neural, 'train', candidate=candidate)
             data_test, test_idx = generate_input_long_history2(parameters.data_neural, 'test', candidate=candidate)
         else:
-            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
+            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate,
+                                                                grid=parameters.grid_lookup)
             data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate,
+                                                              grid=parameters.grid_lookup,
                                                               name=parameters.data_name, raw_uid=parameters.uid_lookup,
                                                               raw_sess=parameters.data_filter)
 
