@@ -62,7 +62,7 @@ class RnnParameterData(object):
         self.uid_lookup = {}
         for k, v in self.uid_list.items():
             self.uid_lookup[v[0]] = k
-        self.raw_pid = self.vid_list.keys()
+        self.raw_pid = [p for p in self.vid_list.keys() if p != 'unk']
         self._int_vid = [self.vid_list[p][0] for p in self.raw_pid]
         self._raw_xy = [self.vid_lookup[i] for i in self._int_vid]
         self.raw_x = [i[0] for i in self._raw_xy]
