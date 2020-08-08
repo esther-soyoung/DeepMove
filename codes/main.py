@@ -89,12 +89,12 @@ def run(args):
             data_train, train_idx = generate_input_long_history2(parameters.data_neural, 'train', candidate=candidate)
             data_test, test_idx = generate_input_long_history2(parameters.data_neural, 'test', candidate=candidate)
         else:
-            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate,
-                                                                grid=parameters.grid_lookup)
-            data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate,
-                                                              grid=parameters.grid_lookup,
-                                                              name=parameters.data_name, raw_uid=parameters.uid_lookup,
-                                                              raw_sess=parameters.data_filter)
+            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
+                                                                # grid=parameters.grid_lookup)핑  # 학습부터 grid mapping
+            data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate)
+                                                              # name=parameters.data_name, raw_uid=parameters.uid_lookup,
+                                                              # raw_sess=parameters.data_filter)
+                                                              # grid = parameters.grid_lookup)  # 학습부터 grid mapping
 
     print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                        len([y for x in train_idx for y in train_idx[x]]),
@@ -111,7 +111,8 @@ def run(args):
             metrics['train_loss'].append(avg_loss)
 
         avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
-                                                  optimizer, criterion, parameters.model_mode)
+                                                  optimizer, criterion, parameters.model_mode,
+                                                  grid=parameters.grid_lookup)  # accuracy eval시에만 grid mapping
         print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
 
         metrics['valid_loss'].append(avg_loss)

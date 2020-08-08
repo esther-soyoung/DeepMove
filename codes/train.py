@@ -326,7 +326,7 @@ def generate_queue(train_idx, mode, mode2):
     return train_queue
 
 
-def get_acc(target, scores):
+def get_acc(target, scores, grid):
     """target and scores are torch cuda Variable"""
     target = target.data.cpu().numpy()
     val, idxx = scores.data.topk(10, 1)  # top 10 predictions
@@ -334,6 +334,9 @@ def get_acc(target, scores):
     acc = np.zeros((3, 1))
     for i, p in enumerate(predx):  # enumerate for the number of targets
         t = target[i]
+        if grid:
+            t = grid[t]
+            p = [grid[i] for i in p]
         if t in p[:10] and t > 0:
             acc[0] += 1  # top10
         if t in p[:5] and t > 0:
@@ -366,7 +369,7 @@ def get_hint(target, scores, users_visited):
     return hint, count
 
 
-def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None):
+def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, grid=None):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     run_queue = None
@@ -421,7 +424,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             optimizer.step()
         elif mode == 'test':
             users_acc[u][0] += len(target)
-            acc = get_acc(target, scores)
+            acc = get_acc(target, scores, grid=grid)
             users_acc[u][1] += acc[2]
         total_loss.append(loss.data.cpu().numpy()[0])
 
