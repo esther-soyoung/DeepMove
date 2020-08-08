@@ -39,7 +39,7 @@ def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon],
             nYCol = m_nGridCount - 1
 
         iIndex = nYCol * m_nGridCount + nXCol
-        poi_index_dict[index[i]] = iIndex  # key: pid, val: grid id
+        poi_index_dict[index[i]] = iIndex  # key: raw pid, val: grid id
         m_vIndexCells[iIndex].append([index[i], x[i], y[i]])
 
     return poi_index_dict, center_location_list
@@ -67,7 +67,10 @@ class RnnParameterData(object):
         self._raw_xy = [self.vid_lookup[i] for i in self._int_vid]
         self.raw_x = [i[0] for i in self._raw_xy]
         self.raw_y = [i[1] for i in self._raw_xy]
-        self.grid_lookup = geo_grade(self.raw_pid, self.raw_x, self.raw_y)[0]  # key: pid, val: grid id
+        self._raw_grid_lookup = geo_grade(self.raw_pid, self.raw_x, self.raw_y)[0]  # key: raw pid, val: grid id
+        self.grid_lookup = {}
+        for k, v in self.vid_list.items():
+            self.grid_lookup[v[0]] = self._raw_grid_lookup[k]
 
         self.tim_size = 48
         self.loc_size = len(self.vid_list)
