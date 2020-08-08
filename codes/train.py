@@ -70,6 +70,8 @@ class RnnParameterData(object):
         self._raw_grid_lookup = geo_grade(self.raw_pid, self.raw_x, self.raw_y)[0]  # key: raw pid, val: grid id
         self.grid_lookup = {}
         for k, v in self.vid_list.items():
+            if k == 'unk':
+                continue
             self.grid_lookup[v[0]] = self._raw_grid_lookup[k]
 
         self.tim_size = 48
