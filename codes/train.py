@@ -18,10 +18,12 @@ def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon],
     dSizeX = (dXMax - dXMin) / m_nGridCount
     dSizeY = (dYMax - dYMin) / m_nGridCount
     m_vIndexCells = []  # list of lists
+    # center_location_list = []
     for i in range(0, m_nGridCount * m_nGridCount + 1):
         m_vIndexCells.append([])
         y_ind = int(i / m_nGridCount)
         x_ind = i - y_ind * m_nGridCount
+        # center_location_list.append((dXMin + x_ind * dSizeX + 0.5 * dSizeX, dYMin + y_ind * dSizeY + 0.5 * dSizeY))
     # print (m_nGridCount, m_dOriginX, m_dOriginY, \
     #        dSizeX, dSizeY, len(m_vIndexCells), len(index))
     poi_index_dict = {}
@@ -42,6 +44,7 @@ def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon],
         _poi_index_dict[iIndex].append(index[i])  # key: grid id, val: raw pid
         m_vIndexCells[iIndex].append([index[i], x[i], y[i]])
 
+    # return poi_index_dict, center_location_list
     return poi_index_dict, _poi_index_dict
 
 
