@@ -89,13 +89,15 @@ def run(args):
             data_train, train_idx = generate_input_long_history2(parameters.data_neural, 'train', candidate=candidate)
             data_test, test_idx = generate_input_long_history2(parameters.data_neural, 'test', candidate=candidate)
         else:
-            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
-                                                                # grid_train=True)  # 학습부터 grid mapping
+            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate,
+                                                                grid_train=args.grid_train,
+                                                                grid=parameters.grid_lookup)  # 학습부터 grid mapping
             data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate,
+                                                              grid_train=args.grid_train,  # 학습부터 grid mapping
                                                               grid=parameters.grid_lookup,
-                                                              name=parameters.data_name, raw_uid=parameters.uid_lookup,
-                                                              raw_sess=parameters.data_filter)
-                                                              # grid_train=True)  # 학습부터 grid mapping
+                                                              data_name=parameters.data_name,  # write data_name.tsv
+                                                              raw_uid=parameters.uid_lookup,  # write data_name.tsv
+                                                              raw_sess=parameters.data_filter)  # write data_name.tsv
 
     print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                        len([y for x in train_idx for y in train_idx[x]]),
@@ -113,7 +115,8 @@ def run(args):
 
         avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
                                                   optimizer, criterion, parameters.model_mode,
-                                                  grid=parameters.grid_lookup)  # accuracy eval시에만 grid mapping
+                                                  grid_eval=args.grid_eval,  # accuracy eval시에만 grid mappin
+                                                  grid=parameters.grid_lookup)
         print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
 
         metrics['valid_loss'].append(avg_loss)
@@ -220,6 +223,8 @@ if __name__ == '__main__':
     parser.add_argument('--model_mode', type=str, default='simple_long',
                         choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
     parser.add_argument('--pretrain', type=int, default=1)
+    parser.add_argument('--grid_train', type=bool, default=False)
+    parser.add_argument('--grid_eval', type=bool, default=False)
     args = parser.parse_args()
     if args.pretrain == 1:
         args = load_pretrained_model(args)

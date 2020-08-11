@@ -5,6 +5,7 @@ from __future__ import division
 import torch
 from torch.autograd import Variable
 
+import sys
 import numpy as np
 import cPickle as pickle
 from collections import deque, Counter, defaultdict
@@ -214,23 +215,29 @@ def generate_input_long_history2(data_neural, mode, candidate=None):
     return data_train, train_idx
 
 
-def generate_input_long_history(data_neural, mode, candidate=None, grid_train=False, grid=None, name=None, raw_uid=None, raw_sess=None):
+def generate_input_long_history(data_neural, mode, candidate=None, grid_train=False, grid=None, data_name=None, raw_uid=None, raw_sess=None):
+    try:
+        if grid_train and not grid:
+            raise ValueError
+    except ValueError:
+        sys.exit('grid lookup table should be given in grid train mode')
+
     data_train = {}
     train_idx = {}
-    if name:
-        w = open(name+'_grid.tsv', 'w')
+    if data_name:  # write tsv mode
+        w = open(data_name+'_grid.tsv', 'w')
         ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
         w.write(ww + '\n')
     if candidate is None:
         candidate = data_neural.keys()  # uids
     for u in candidate:
         sessions = data_neural[u]['sessions']  # {sid: [[vid, tid]]}
-        if grid_train:
+        if grid_train:  # train with grid id instead of vid
             _sessions = {}
             for k, v in sessions.items():
                 _sessions[k] = [[grid[vt[0]], vt[1]] for vt in v]
             sessions = _sessions  # {sid: [[gid, tid]]}
-        if raw_uid:
+        if data_name:
             raw_u = raw_uid[u]
             raw_sessions = raw_sess[raw_u]['sessions']
         train_id = data_neural[u][mode]  # train_id | test_id
@@ -241,23 +248,23 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
                 continue
             session = sessions[i]  # [[vid, tid]]
             target = np.array([s[0] for s in session[1:]])  # [vid]
-            if raw_sess:
+            if data_name:
                 raw_s = raw_sessions[i]
                 raw_target = [s[0] for s in raw_s[1:]]  # [vid]
                 raw_target_tim = [s[1] for s in raw_s[1:]]  # [tid]
 
             history = []
-            if raw_sess:
+            if data_name:
                 raw_history = []
             if mode == 'test':
                 test_id = data_neural[u]['train']
                 for tt in test_id:
                     history.extend([(s[0], s[1]) for s in sessions[tt]])  # train records s
-                    if raw_sess:
+                    if data_name:
                         raw_history.extend([(s[0], s[1]) for s in raw_sessions[tt]])  # train records s
             for j in range(c):
                 history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
-                if raw_sess:
+                if data_name:
                     raw_history.extend([(s[0], s[1]) for s in raw_sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
 
             history_tim = [t[1] for t in history]
@@ -287,7 +294,7 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
             trace['tim'] = Variable(torch.LongTensor(tim_np))
             trace['target'] = Variable(torch.LongTensor(target))
             data_train[u][i] = trace  # history_loc, history_tim, history_count, loc
-            if raw_sess:
+            if data_name:
                 raw_loc_tim = raw_history  # [vid, tid]
                 raw_loc_tim.extend([(s[0], s[1]) for s in raw_s[:-1]])  # until recently
                 raw_loc_np = [s[0] for s in raw_loc_tim]
@@ -300,7 +307,7 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
                 ww = '\t'.join([str(raw_u), str(x), str(y)])
                 w.write(ww + '\n')
         train_idx[u] = train_id
-    if name:
+    if data_name:
         w.close()
     return data_train, train_idx
 
@@ -340,7 +347,7 @@ def get_acc(target, scores, grid):
     acc = np.zeros((3, 1))
     for i, p in enumerate(predx):  # enumerate for the number of targets
         t = target[i]
-        if grid:
+        if grid:  # grid evaluation mode
             t = grid[t]
             p = [grid[i] for i in p]
         if t in p[:10] and t > 0:
@@ -375,9 +382,15 @@ def get_hint(target, scores, users_visited):
     return hint, count
 
 
-def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, grid=None):
+def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, grid_eval=False, grid=None):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
+    try:
+        if (grid_eval and not grid) or (not grid_eval and grid):
+            raise ValueError
+    except ValueError:
+        sys.exit('grid lookup table should be given if and only if grid evaluation mode is on')
+
     run_queue = None
     if mode == 'train':
         model.train(True)
