@@ -116,7 +116,8 @@ def run(args):
         avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
                                                   optimizer, criterion, parameters.model_mode,
                                                 #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mappin
-                                                  grid_eval=True,  # accuracy eval시에만 grid mappin
+                                                #   grid_eval=True,  # accuracy eval시에만 grid mappin
+                                                  grid_eval=False,  # accuracy eval시에만 grid mappin
                                                   grid=parameters.grid_lookup)
         print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
 

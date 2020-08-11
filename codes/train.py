@@ -339,7 +339,7 @@ def generate_queue(train_idx, mode, mode2):
     return train_queue
 
 
-def get_acc(target, scores, grid):
+def get_acc(target, scores, grid=None):
     """target and scores are torch cuda Variable"""
     target = target.data.cpu().numpy()
     val, idxx = scores.data.topk(10, 1)  # top 10 predictions
@@ -386,10 +386,10 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     try:
-        if (grid_eval and not grid) or (not grid_eval and grid):
+        if (grid_eval and not grid):
             raise ValueError
     except ValueError:
-        sys.exit('grid lookup table should be given if and only if grid evaluation mode is on')
+        sys.exit('grid lookup table should be given in grid evaluation mode')
 
     run_queue = None
     if mode == 'train':
@@ -443,7 +443,9 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             optimizer.step()
         elif mode == 'test':
             users_acc[u][0] += len(target)
-            acc = get_acc(target, scores, grid=grid)
+            acc = get_acc(target, scores)
+            if grid_eval:
+                acc = get_acc(target, scores, grid=grid)
             users_acc[u][1] += acc[2]
         total_loss.append(loss.data.cpu().numpy()[0])
 
