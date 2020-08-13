@@ -117,7 +117,6 @@ def run(args):
                                                   optimizer, criterion, parameters.model_mode,
                                                 #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mappin
                                                 #   grid_eval=True,  # accuracy eval시에만 grid mappin
-                                                  grid_eval=False,  # accuracy eval시에만 grid mappin
                                                   grid=parameters.grid_lookup)
         print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
 
