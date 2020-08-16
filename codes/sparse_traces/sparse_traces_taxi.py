@@ -71,9 +71,9 @@ def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon],
 
 class DataTaxi(object):
     def __init__(self, trace_min=10, global_visit=10, minute_gap=5, min_gap=4, session_min=2, session_max=10,
-                 sessions_min=2, train_split=0.8, embedding_len=50, header=True, grid=True):
+                 sessions_min=2, train_split=0.8, embedding_len=50, header=True, grid=None):
         tmp_path = "../../data/Taxi/"
-        self.TWITTER_PATH = tmp_path + 'tx_device_info_log_20200220.txt'
+        self.TWITTER_PATH = tmp_path + 'merged_cleaned_taxi_data.txt'
         # self.VENUES_PATH = tmp_path + 'venues_all.txt'
         self.SAVE_PATH = tmp_path
         self.save_name = 'taxi'
@@ -129,6 +129,8 @@ class DataTaxi(object):
                 minute = minute.split('.')[0].zfill(2)
                 second = second.split('.')[0].zfill(2)
                 pid = self.pois[(float(lon), float(lat))]  # pid
+                import pdb
+                pdb.set_trace()
                 if self.grid:
                     pid = self.grids[pid]  # key: raw pid, val: grid id 
                 tim = '%s-%s-%s %s:%s:%s' %(year, month, day, hour, minute, second)

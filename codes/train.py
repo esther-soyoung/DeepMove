@@ -225,8 +225,11 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
     data_train = {}
     train_idx = {}  # key: int uid, val: list of train sids 
     if data_name:  # write tsv mode
-        w = open(data_name+'_grid.tsv', 'w')
-        ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
+        if grid:
+            w = open(data_name+'_grid.tsv', 'w')
+        else: 
+            w = open(data_name+'.tsv', 'w')
+        ww = '\t'.join(['uid', 'input(loc, tim)', 'target sid', 'target[(pid, tim)]'])
         w.write(ww + '\n')
     if candidate is None:
         candidate = data_neural.keys()  # uids
@@ -306,7 +309,7 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
                     grid_loc_np = [grid[i] for i in [s[0] for s in loc_tim]]
                     x = zip(grid_loc_np, raw_tim_np)
                 y = zip(raw_target, raw_target_tim)
-                ww = '\t'.join([str(raw_u), str(x), str(y)])
+                ww = '\t'.join([str(raw_u), str(x), str(i), str(y)])
                 w.write(ww + '\n')
         train_idx[u] = train_id
     if data_name:
