@@ -96,7 +96,7 @@ def run(args):
                                                                 # grid=parameters.grid_lookup)  
             data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate,
                                                             #   grid_train=args.grid_train,  # train with grid id instaed of pid
-                                                            #   grid=parameters.grid_lookup,
+                                                              grid=parameters.grid_lookup,
                                                               data_name=parameters.data_name,  # write data_name.tsv
                                                               raw_uid=parameters.uid_lookup,  # write data_name.tsv
                                                               raw_sess=parameters.data_filter)  # write data_name.tsv
