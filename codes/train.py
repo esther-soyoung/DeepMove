@@ -250,10 +250,10 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
             target = np.array([s[0] for s in session[1:]])  # [vid]
             if data_name:
                 raw_s = raw_sessions[i]
-                raw_target = [s[0] for s in raw_s[1:]]  # [vid]
-                if grid:
+                raw_target = [s[0] for s in raw_s[1:]]  # [raw pid]
+                if grid:  # write grid id
                     raw_target = [grid[s] for s in target]
-                raw_target_tim = [s[1] for s in raw_s[1:]]  # [tid]
+                raw_target_tim = [s[1] for s in raw_s[1:]]  # [raw tim]
 
             history = []
             if data_name:

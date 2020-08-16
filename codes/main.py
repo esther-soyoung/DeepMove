@@ -91,11 +91,11 @@ def run(args):
             data_train, train_idx = generate_input_long_history2(parameters.data_neural, 'train', candidate=candidate)
             data_test, test_idx = generate_input_long_history2(parameters.data_neural, 'test', candidate=candidate)
         else:
-            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate,
-                                                                # grid_train=args.grid_train,
-                                                                grid=parameters.grid_lookup)  # 학습부터 grid mapping
+            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
+                                                                # grid_train=args.grid_train,  # train with grid id instaed of pid
+                                                                # grid=parameters.grid_lookup)  
             data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate,
-                                                            #   grid_train=args.grid_train,  # 학습부터 grid mapping
+                                                            #   grid_train=args.grid_train,  # train with grid id instaed of pid
                                                               grid=parameters.grid_lookup,
                                                               data_name=parameters.data_name,  # write data_name.tsv
                                                               raw_uid=parameters.uid_lookup,  # write data_name.tsv
