@@ -223,7 +223,7 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
         sys.exit('grid lookup table should be given in grid train mode')
 
     data_train = {}
-    train_idx = {}
+    train_idx = {}  # key: int uid, val: list of train sids 
     if data_name:  # write tsv mode
         w = open(data_name+'_grid.tsv', 'w')
         ww = '\t'.join(['uid', 'input(loc, tim)', 'target[vid]'])
@@ -240,11 +240,11 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
         if data_name:
             raw_u = raw_uid[u]
             raw_sessions = raw_sess[raw_u]['sessions']
-        train_id = data_neural[u][mode]  # train_id | test_id
-        data_train[u] = {}
+        train_id = data_neural[u][mode]  # list of train sid | test sid
+        data_train[u] = {}  # key: sid, val: trace
         for c, i in enumerate(train_id):
-            trace = {}
-            if mode == 'train' and c == 0:
+            trace = {}  # key: 'loc', 'tim', 'target', val: tensor(int vid), tensor(int tid), tensor(int vid) 
+            if mode == 'train' and c == 0:  # skip very first train sid
                 continue
             session = sessions[i]  # [[vid, tid]]
             target = np.array([s[0] for s in session[1:]])  # [vid]
@@ -263,11 +263,11 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
                 for tt in test_id:
                     history.extend([(s[0], s[1]) for s in sessions[tt]])  # train records s
                     if data_name:
-                        raw_history.extend([(s[0], s[1]) for s in raw_sessions[tt]])  # train records s
+                        raw_history.extend([(s[0], s[1]) for s in raw_sessions[tt]])  # raw train records s
             for j in range(c):
-                history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
+                history.extend([(s[0], s[1]) for s in sessions[train_id[j]]])  # cumulative [vid, tid] until the last sid
                 if data_name:
-                    raw_history.extend([(s[0], s[1]) for s in raw_sessions[train_id[j]]])  # 현재 세션까지 누적 [vid, tid]
+                    raw_history.extend([(s[0], s[1]) for s in raw_sessions[train_id[j]]])
 
             history_tim = [t[1] for t in history]
             history_count = [1]  # frequency of tids
@@ -289,7 +289,7 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
             trace['history_count'] = history_count
 
             loc_tim = history  # [vid, tid]
-            loc_tim.extend([(s[0], s[1]) for s in session[:-1]])  # until recently
+            loc_tim.extend([(s[0], s[1]) for s in session[:-1]])  # extend current session just before the last record
             loc_np = np.reshape(np.array([s[0] for s in loc_tim]), (len(loc_tim), 1))
             tim_np = np.reshape(np.array([s[1] for s in loc_tim]), (len(loc_tim), 1))
             trace['loc'] = Variable(torch.LongTensor(loc_np))
@@ -396,22 +396,22 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     run_queue = None
     if mode == 'train':
         model.train(True)
-        run_queue = generate_queue(run_idx, 'random', 'train')
+        run_queue = generate_queue(run_idx, 'random', 'train')  # train sid
     elif mode == 'test':
         model.train(False)
-        run_queue = generate_queue(run_idx, 'normal', 'test')
+        run_queue = generate_queue(run_idx, 'normal', 'test')  # test sid
     total_loss = []
     queue_len = len(run_queue)
 
     users_acc = {}
     for c in range(queue_len):
         optimizer.zero_grad()
-        u, i = run_queue.popleft()  # uid, train session id
+        u, i = run_queue.popleft()  # uid, train|test sid
         if u not in users_acc:
-            users_acc[u] = [0, 0]
-        loc = data[u][i]['loc'].cuda()
-        tim = data[u][i]['tim'].cuda()
-        target = data[u][i]['target'].cuda()  # [vid], 정답
+            users_acc[u] = [0, 0]  # [total # of target records, # of correct predictions]
+        loc = data[u][i]['loc'].cuda()  # cumulative loc up to session i[-1]
+        tim = data[u][i]['tim'].cuda()  # cumulative tim up to session i[-1]
+        target = data[u][i]['target'].cuda()  # [vid], answer vid of session_i[1:]
         uid = Variable(torch.LongTensor([u])).cuda()
 
         if 'attn' in mode2:
@@ -457,9 +457,9 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     elif mode == 'test':
         users_rnn_acc = {}
         for u in users_acc:
-            tmp_acc = users_acc[u][1] / users_acc[u][0]
+            tmp_acc = users_acc[u][1] / users_acc[u][0]  # user u's accuracy
             users_rnn_acc[u] = tmp_acc.tolist()[0]
-        avg_acc = np.mean([users_rnn_acc[x] for x in users_rnn_acc])
+        avg_acc = np.mean([users_rnn_acc[x] for x in users_rnn_acc])  # overall average accuracy
         return avg_loss, avg_acc, users_rnn_acc
 
 

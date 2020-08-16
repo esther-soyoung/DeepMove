@@ -189,8 +189,8 @@ class DataTaxi(object):
                     else:
                         pass
                 last_tid = tid
-            sessions_filter = {}
-            for s in sessions:
+            sessions_filter = {}  # key: filtered sid, val: [[raw pid, raw tim]]
+            for s in sessions:  # sid
                 # sessions with records >= 5
                 if len(sessions[s]) >= self.filter_short_session:
                     sessions_filter[len(sessions_filter)] = sessions[s]
@@ -254,21 +254,21 @@ class DataTaxi(object):
 
     def prepare_neural_data(self):
         for u in self.uid_list:
-            sessions = self.data_filter[u]['sessions']
-            sessions_tran = {}
+            sessions = self.data_filter[u]['sessions']  # key: sid, val: [[raw pid, raw tim]]
+            sessions_tran = {}  # key: sid, val: [[int vid, int tid]]
             sessions_id = []
             for sid in sessions:
                 sessions_tran[sid] = [[self.vid_list[p[0]][0], self.tid_list_48(p[1])] for p in
-                                      sessions[sid]]
+                                      sessions[sid]]  # [[int vid, int tid]]
                 sessions_id.append(sid)
-            split_id = int(np.floor(self.train_split * len(sessions_id)))
-            train_id = sessions_id[:split_id]
-            test_id = sessions_id[split_id:]
-            pred_len = sum([len(sessions_tran[i]) - 1 for i in train_id])
-            valid_len = sum([len(sessions_tran[i]) - 1 for i in test_id])
-            train_loc = {}
+            split_id = int(np.floor(self.train_split * len(sessions_id)))  # 0.8
+            train_id = sessions_id[:split_id]  # 0.8 from the beginning
+            test_id = sessions_id[split_id:]  # the rest
+            pred_len = sum([len(sessions_tran[i]) - 1 for i in train_id])  # train sid
+            valid_len = sum([len(sessions_tran[i]) - 1 for i in test_id])  # test sid
+            train_loc = {}  # key: int vid, val: # of visits
             for i in train_id:
-                for sess in sessions_tran[i]:
+                for sess in sessions_tran[i]:  # [int vid, int tid]
                     if sess[0] in train_loc:
                         train_loc[sess[0]] += 1
                     else:

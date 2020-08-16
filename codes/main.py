@@ -48,9 +48,11 @@ def run(args):
     elif parameters.model_mode == 'attn_local_long':
         model = TrajPreLocalAttnLong(parameters=parameters).cuda()
     if args.pretrain == 1:
-        if 'la' in args.data_name:
+        if 'taxi' in args.data_name:  # taxi
+            model.load_state_dict(torch.load("../results_taxi/" + args.model_mode + "/res.m"))
+        elif 'la' in args.data_name:  # la
             model.load_state_dict(torch.load("../results_la/" + args.model_mode + "/res.m"))
-        else:
+        elif 'foursquare' in args.data_name:  # ny
             model.load_state_dict(torch.load("../pretrain/" + args.model_mode + "/res.m"))
 
     if 'max' in parameters.model_mode:
@@ -164,9 +166,11 @@ def run(args):
 
 
 def load_pretrained_model(config):
-    if 'la' in config.data_name:
+    if 'taxi' in config.data_name:  # taxi
+        res = json.load(open("../results_taxi/" + config.model_mode + "/res.txt"))
+    elif 'la' in config.data_name:  # la
         res = json.load(open("../results_la/" + config.model_mode + "/res.txt"))
-    else:
+    elif 'foursquare' in config.data_name:  # ny
         res = json.load(open("../pretrain/" + config.model_mode + "/res.txt"))
     args = Settings(config, res["args"])
     return args
@@ -221,7 +225,7 @@ if __name__ == '__main__':
     parser.add_argument('--attn_type', type=str, default='dot', choices=['general', 'concat', 'dot'])
     parser.add_argument('--data_path', type=str, default='../data/')
     parser.add_argument('--save_path', type=str, default='../results/')
-    parser.add_argument('--model_mode', type=str, default='simple_long',
+    parser.add_argument('--model_mode', type=str, default='attn_local_long',
                         choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
     parser.add_argument('--pretrain', type=int, default=1)
     # parser.add_argument('--grid_train', type=bool, default=False)
