@@ -105,61 +105,60 @@ class RnnParameterData(object):
 
     def write_tsv(self):
         # raw train/valid/test data
-        raw_train = defaultdict(dict)  # key: uid, val: dict(record_index: list([[lon, lat], tim]))
-        raw_valid = defaultdict(dict)
-        raw_test = defaultdict(dict)
+        raw_train = defaultdict(list) # key: uid, val: list([record_index, [lon, lat], tim])
+        raw_valid = defaultdict(list)  # key: uid, val: list([record_index, [lon, lat], tim, 'target'])
+        raw_test = defaultdict(list)
         for u in self.data_filter.keys():  # raw uid
             data = self.data_neural[self.uid_list[u][0]]   # {sid: [[int pid, int tid]]}
             for sid in data['train']:  # list of train sessions
-                records = self.index_lookup[u][sid]
-                for r_idx in records:
-                    raw_train[u][r_idx] = []
-                    for record in self.data_filter[u]['sessions'][sid]:  # [[raw pid, raw tim]]
-                        # [[float(lon), float(lat)], raw tim]
-                        raw_train[u][r_idx].append([self.vid_lookup[self.vid_list[record[0]][0]], record[1]])
+                r_idx = self.index_lookup[u][sid]  # corresponding record indices
+                session = self.data_filter[u]['sessions'][sid]  # [[raw pid, raw tim]]
+                assert len(r_idx) == len(session)
+                for i in range(len(r_idx)):
+                    record = session[i]
+                    raw_train[u].append([r_idx[i], self.vid_lookup[self.vid_list[record[0]][0]], record[1]])
             for sid in data['test']:  # list of test sessions
-                records = self.index_lookup[u][sid]
-                for r_idx in records[:-1]:
-                    raw_test[u][r_idx] = []
-                    for record in self.data_filter[u]['sessions'][sid]:  # [[raw pid, raw tim]]
-                        # [[float(lon), float(lat)], raw tim]
-                        raw_test[u][r_idx].append([self.vid_lookup[self.vid_list[record[0]][0]], record[1], 0])
-                r_idx = self.index_lookup[u][sid][-1]
-                record = self.data_filter[u]['sessions'][sid][-1]  # [raw pid, raw tim]
-                raw_test[u][r_idx] = [self.vid_lookup[self.vid_list[record[0]][0]], record[1], 1]  # [[lon, lat], tim, 'target']
+                r_idx = self.index_lookup[u][sid]  # corresponding record indices
+                session = self.data_filter[u]['sessions'][sid]  # [[raw pid, raw tim]]
+                assert len(r_idx) == len(session)
+                for i in range(len(r_idx)-1):
+                    record = session[i]
+                    raw_test[u].append([r_idx[i], self.vid_lookup[self.vid_list[record[0]][0]], record[1], 0])
+                target_idx = r_idx[-1]
+                target_record = session[-1]  # [raw pid, raw tim]
+                raw_test[u].append([target_idx, self.vid_lookup[self.vid_list[target_record[0]][0]], target_record[1], 1])
             for sid in data['valid']:  # list of test sessions
-                records = self.index_lookup[u][sid]
-                for r_idx in records[:-1]:
-                    raw_valid[u][r_idx] = []
-                    for record in self.data_filter[u]['sessions'][sid]:  # [[raw pid, raw tim]]
-                        # [[float(lon), float(lat)], raw tim]
-                        raw_valid[u][r_idx].append([self.vid_lookup[self.vid_list[record[0]][0]], record[1], 0])
-                r_idx = self.index_lookup[u][sid][-1]
-                record = self.data_filter[u]['sessions'][sid][-1]  # [raw pid, raw tim]
-                raw_valid[u][r_idx] = [self.vid_lookup[self.vid_list[record[0]][0]], record[1], 1]  # [[lon, lat], tim, 'target']
+                r_idx = self.index_lookup[u][sid]  # corresponding record indices
+                session = self.data_filter[u]['sessions'][sid]  # [[raw pid, raw tim]]
+                assert len(r_idx) == len(session)
+                for i in range(len(r_idx)-1):
+                    record = session[i]
+                    raw_valid[u].append([r_idx[i], self.vid_lookup[self.vid_list[record[0]][0]], record[1], 0])
+                target_idx = r_idx[-1]
+                target_record = session[-1]  # [raw pid, raw tim]
+                raw_valid[u].append([target_idx, self.vid_lookup[self.vid_list[target_record[0]][0]], target_record[1], 1])
 
         # write on files
-        w_train = open(data_name + '_train.tsv', 'w')
+        w_train = open(self.data_name + '_train.tsv', 'w')
         l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim'])
         w_train.write(l + '\n')
-        for key, vals in raw_train.items():  # uid, dict(r_idx:list([[lon, lat], tim]))
-            for k, val in vals.items():  # r_idx, list([[lon, lat], tim])
-                for v in val:  # [[lon, lat], tim]
-                    l = '\t'.join([str(key), str(k), str(v[0][0]), str(v[0][1]), str(v[1])])
-                    w_train.write(l + '\n')
-        w_test = open(data_name + '_test.tsv', 'w')
+        for key, val in raw_train.items():  # key: uid, val: list([record_index, [lon, lat], tim])
+            for v in val:  # list([record_index, [lon, lat], tim])
+                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2])])
+                w_train.write(l + '\n')
+        w_test = open(self.data_name + '_test.tsv', 'w')
         l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', '(target)'])
         w_test.write(l + '\n')
-        for key, vals in raw_test.items():  # uid, dict(r_idx:list([[lon, lat], tim]))
-            for k, v in vals.items():  # r_idx, [[lon, lat], tim, 0|1]
-                l = '\t'.join([str(key), str(k), str(v[0][0]), str(v[0][1]), str(v[1]), str(v[2])])
+        for key, val in raw_test.items():  # key: uid, val: list([record_index, [lon, lat], tim, 'target'])
+            for v in val:  # [r_idx, [lon, lat], tim, 0|1]
+                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3])])
                 w_test.write(l + '\n')
-        w_valid = open(data_name + '_valid.tsv', 'w')
+        w_valid = open(self.data_name + '_valid.tsv', 'w')
         l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', '(target)'])
         w_valid.write(l + '\n')
-        for key, vals in raw_valid.items():  # uid, dict(r_idx:list([[lon, lat], tim]))
-            for k, v in vals.items():  # r_idx, [[lon, lat], tim, 0|1]
-                l = '\t'.join([str(key), str(k), str(v[0][0]), str(v[0][1]), str(v[1]), str(v[2])])
+        for key, val in raw_valid.items():  # key: uid, val: list([record_index, [lon, lat], tim, 'target'])
+            for v in val:  # [r_idx, [lon, lat], tim, 0|1]
+                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3])])
                 w_valid.write(l + '\n')
         w_train.close()
         w_test.close()

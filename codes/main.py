@@ -3,7 +3,7 @@ from __future__ import print_function
 from __future__ import division
 
 import torch
-from torch.utils.tensorboard import SummaryWriter
+# from tensorboardX import SummaryWriter
 import torch.nn as nn
 import torch.optim as optim
 
@@ -24,7 +24,6 @@ from model import TrajPreSimple, TrajPreAttnAvgLongUser, TrajPreLocalAttnLong
 
 
 def run(args):
-    writer = SummaryWriter(args.data_name)
     parameters = RnnParameterData(loc_emb_size=args.loc_emb_size, uid_emb_size=args.uid_emb_size,
                                   voc_emb_size=args.voc_emb_size, tim_emb_size=args.tim_emb_size,
                                   hidden_size=args.hidden_size, dropout_p=args.dropout_p,
@@ -116,6 +115,8 @@ def run(args):
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
     os.mkdir(SAVE_PATH + tmp_path)
+
+    # writer = SummaryWriter(args.data_name)
     for epoch in range(parameters.epoch):
         st = time.time()
         if args.pretrain == 0:
@@ -132,6 +133,9 @@ def run(args):
                                                   grid=parameters.grid_lookup)
         print('==>Validation Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
         sys.stdout.flush()
+        # if epoch % 20 == 0:
+            # writer.add_scalar('avg_loss', avg_loss, epoch)
+            # writer.add_scalar('avg_acc', avg_acc, epoch)
 
         metrics['valid_loss'].append(avg_loss)
         metrics['accuracy'].append(avg_acc)
