@@ -3,6 +3,7 @@ from __future__ import print_function
 from __future__ import division
 
 import torch
+from torch.utils.tensorboard import SummaryWriter
 import torch.nn as nn
 import torch.optim as optim
 
@@ -23,6 +24,7 @@ from model import TrajPreSimple, TrajPreAttnAvgLongUser, TrajPreLocalAttnLong
 
 
 def run(args):
+    writer = SummaryWriter(args.data_name)
     parameters = RnnParameterData(loc_emb_size=args.loc_emb_size, uid_emb_size=args.uid_emb_size,
                                   voc_emb_size=args.voc_emb_size, tim_emb_size=args.tim_emb_size,
                                   hidden_size=args.hidden_size, dropout_p=args.dropout_p,
@@ -31,6 +33,9 @@ def run(args):
                                   optim=args.optim, attn_type=args.attn_type,
                                   clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
                                   model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)
+    print('*' * 15 + 'loaded parameters' + '*' * 15)
+    sys.stdout.flush()
+    parameters.write_tsv()
     argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
             'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
             'dropout_p': args.dropout_p, 'data_name': args.data_name, 'learning_rate': args.learning_rate,
@@ -38,8 +43,10 @@ def run(args):
             'optim': args.optim, 'attn_type': args.attn_type, 'clip': args.clip, 'rnn_type': args.rnn_type,
             'epoch_max': args.epoch_max, 'history_mode': args.history_mode, 'model_mode': args.model_mode}
     print('*' * 15 + 'start training' + '*' * 15)
+    sys.stdout.flush()
     print('model_mode:{} history_mode:{} users:{}'.format(
         parameters.model_mode, parameters.history_mode, parameters.uid_size))
+    sys.stdout.flush()
 
     if parameters.model_mode in ['simple', 'simple_long']:
         model = TrajPreSimple(parameters=parameters).cuda()
@@ -105,6 +112,7 @@ def run(args):
     print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                        len([y for x in train_idx for y in train_idx[x]]),
                                                        len([y for x in test_idx for y in test_idx[x]])))
+    sys.stdout.flush()
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
     os.mkdir(SAVE_PATH + tmp_path)
@@ -114,6 +122,7 @@ def run(args):
             model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
                                          criterion, parameters.model_mode)
             print('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
+            sys.stdout.flush()
             metrics['train_loss'].append(avg_loss)
 
         # validation
@@ -122,6 +131,7 @@ def run(args):
                                                 #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mapping
                                                   grid=parameters.grid_lookup)
         print('==>Validation Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
+        sys.stdout.flush()
 
         metrics['valid_loss'].append(avg_loss)
         metrics['accuracy'].append(avg_acc)
@@ -138,8 +148,10 @@ def run(args):
             load_name_tmp = 'ep_' + str(load_epoch) + '.m'
             model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
             print('load epoch={} model state'.format(load_epoch))
+            sys.stdout.flush()
         if epoch == 0:
             print('single epoch time cost:{}'.format(time.time() - st))
+            sys.stdout.flush()
         if lr <= 0.9 * 1e-5:
             break
         if args.pretrain == 1:
@@ -151,10 +163,12 @@ def run(args):
     model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
     # test
     print('*' * 15 + 'start testing' + '*' * 15)
+    sys.stdout.flush()
     avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
                                               optimizer, criterion, parameters.model_mode,
                                               grid=parameters.grid_lookup)
     print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
+    sys.stdout.flush()
 
     save_name = 'res'
     json.dump({'args': argv, 'metrics': metrics}, fp=open(SAVE_PATH + save_name + '.rs', 'w'), indent=4)
