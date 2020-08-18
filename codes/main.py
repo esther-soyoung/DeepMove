@@ -72,7 +72,7 @@ def run(args):
     lr = parameters.lr
     metrics = {'train_loss': [], 'valid_loss': [], 'accuracy': [], 'valid_acc': {}}
 
-    candidate = parameters.data_neural.keys()
+    candidate = parameters.data_neural.keys()  # list(uid)
     avg_acc_markov, users_acc_markov = markov(parameters, candidate)
     metrics['markov_acc'] = users_acc_markov
 
@@ -96,10 +96,11 @@ def run(args):
                                                                 # grid=parameters.grid_lookup)  
             data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate,
                                                             #   grid_train=args.grid_train,  # train with grid id instaed of pid
-                                                              grid=parameters.grid_lookup,
-                                                              data_name=parameters.data_name,  # write data_name.tsv
+                                                            #   grid=parameters.grid_lookup,
+                                                            #   data_name=parameters.data_name,  # write data_name.tsv
                                                               raw_uid=parameters.uid_lookup,  # write data_name.tsv
                                                               raw_sess=parameters.data_filter)  # write data_name.tsv
+            data_valid, valid_idx = generate_input_long_history(parameters.data_neural, 'valid', candidate=candidate)
 
     print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                        len([y for x in train_idx for y in train_idx[x]]),
@@ -115,12 +116,12 @@ def run(args):
             print('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
             metrics['train_loss'].append(avg_loss)
 
-        avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
+        # validation
+        avg_loss, avg_acc, users_acc = run_simple(data_valid, valid_idx, 'test', lr, parameters.clip, model,
                                                   optimizer, criterion, parameters.model_mode,
-                                                #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mappin
-                                                #   grid_eval=True,  # accuracy eval시에만 grid mappin
+                                                #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mapping
                                                   grid=parameters.grid_lookup)
-        print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
+        print('==>Validation Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
 
         metrics['valid_loss'].append(avg_loss)
         metrics['accuracy'].append(avg_acc)
@@ -148,6 +149,13 @@ def run(args):
     avg_acc = metrics['accuracy'][mid]
     load_name_tmp = 'ep_' + str(mid) + '.m'
     model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
+    # test
+    print('*' * 15 + 'start testing' + '*' * 15)
+    avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
+                                              optimizer, criterion, parameters.model_mode,
+                                              grid=parameters.grid_lookup)
+    print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
+
     save_name = 'res'
     json.dump({'args': argv, 'metrics': metrics}, fp=open(SAVE_PATH + save_name + '.rs', 'w'), indent=4)
     metrics_view = {'train_loss': [], 'valid_loss': [], 'accuracy': []}

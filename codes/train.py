@@ -78,6 +78,72 @@ class RnnParameterData(object):
                 continue
             self.grid_lookup[v[0]] = self._raw_grid_lookup[k]
 
+        self.index_lookup = data['index_lookup']  # key: raw uid, val: dict(sid: [record indices])
+
+        # raw train/valid/test data
+        from collections import defaultdict
+        raw_train = defaultdict(dict)  # key: uid, val: dict(record_index: list([[lon, lat], tim]))
+        raw_valid = defaultdict(dict)
+        raw_test = defaultdict(dict)
+        for u in self.data_filter.keys():  # raw uid
+            data = self.data_neural[self.uid_list[u][0]]   # {sid: [[int pid, int tid]]}
+            for sid in data['train']:  # list of train sessions
+                records = self.index_lookup[u][sid]
+                for r_idx in records:
+                    raw_train[u][r_idx] = []
+                    for record in self.data_filter[u]['sessions'][sid]:  # [[raw pid, raw tim]]
+                        # [[float(lon), float(lat)], raw tim]
+                        raw_train[u][r_idx].append([self.vid_lookup[self.vid_list[record[0]][0]], record[1]])  
+            import pdb
+            pdb.set_trace()
+            for sid in data['test']:  # list of test sessions
+                records = self.index_lookup[u][sid]
+                for r_idx in records[:-1]:
+                    raw_test[u][r_idx] = []
+                    for record in self.data_filter[u]['sessions'][sid]:  # [[raw pid, raw tim]]
+                        # [[float(lon), float(lat)], raw tim]
+                        raw_test[u][r_idx].append([self.vid_lookup[self.vid_list[record[0]][0]], record[1], 0])  
+                r_idx = self.index_lookup[u][sid][-1]
+                record = self.data_filter[u]['sessions'][sid][-1]  # [raw pid, raw tim]
+                raw_test[u][r_idx] = [self.vid_lookup[self.vid_list[record[0]][0]], record[1], 1]  # [[lon, lat], tim, 'target'] 
+            for sid in data['valid']:  # list of test sessions
+                records = self.index_lookup[u][sid]
+                for r_idx in records[:-1]:
+                    raw_valid[u][r_idx] = []
+                    for record in self.data_filter[u]['sessions'][sid]:  # [[raw pid, raw tim]]
+                        # [[float(lon), float(lat)], raw tim]
+                        raw_valid[u][r_idx].append([self.vid_lookup[self.vid_list[record[0]][0]], record[1], 0])  
+                r_idx = self.index_lookup[u][sid][-1]
+                record = self.data_filter[u]['sessions'][sid][-1]  # [raw pid, raw tim]
+                raw_valid[u][r_idx] = [self.vid_lookup[self.vid_list[record[0]][0]], record[1], 1]  # [[lon, lat], tim, 'target'] 
+
+        # write on files
+        w_train = open(data_name + '_train.tsv', 'w')
+        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim'])
+        w_train.write(l + '\n')
+        for key, vals in raw_train.items():  # uid, dict(r_idx:list([[lon, lat], tim]))
+            for k, val in vals.items():  # r_idx, list([[lon, lat], tim]) 
+                for v in val:  # [[lon, lat], tim]
+                    l = '\t'.join([str(key), str(k), str(v[0][0]), str(v[0][1]), str(v[1])])
+                    w_train.write(l + '\n')
+        w_test = open(data_name + '_test.tsv', 'w')
+        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', '(target)'])
+        w_test.write(l + '\n')
+        for key, vals in raw_test.items():  # uid, dict(r_idx:list([[lon, lat], tim]))
+            for k, v in vals.items():  # r_idx, [[lon, lat], tim, 0|1]
+                l = '\t'.join([str(key), str(k), str(v[0][0]), str(v[0][1]), str(v[1]), str(v[2])])
+                w_test.write(l + '\n')
+        w_valid = open(data_name + '_valid.tsv', 'w')
+        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', '(target)'])
+        w_valid.write(l + '\n')
+        for key, vals in raw_valid.items():  # uid, dict(r_idx:list([[lon, lat], tim]))
+            for k, v in vals.items():  # r_idx, [[lon, lat], tim, 0|1]
+                l = '\t'.join([str(key), str(k), str(v[0][0]), str(v[0][1]), str(v[1]), str(v[2])])
+                w_valid.write(l + '\n')
+        w_train.close()
+        w_test.close()
+        w_valid.close()
+
         self.tim_size = 48
         self.loc_size = len(self.vid_list)
         self.uid_size = len(self.uid_list)
@@ -229,7 +295,7 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
             w = open(data_name+'_grid.tsv', 'w')
         else: 
             w = open(data_name+'.tsv', 'w')
-        ww = '\t'.join(['uid', 'input(loc, tim)', 'target sid', 'target[(pid, tim)]'])
+        ww = '\t'.join(['uid','target[(pid, tim)]'])
         w.write(ww + '\n')
     if candidate is None:
         candidate = data_neural.keys()  # uids
@@ -261,7 +327,13 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
             history = []
             if data_name:
                 raw_history = []
-            if mode == 'test':
+            if mode == 'test':  # extend train data
+                test_id = data_neural[u]['train'] + data_neural[u]['valid']
+                for tt in test_id:
+                    history.extend([(s[0], s[1]) for s in sessions[tt]])  # train records s
+                    if data_name:
+                        raw_history.extend([(s[0], s[1]) for s in raw_sessions[tt]])  # raw train records s
+            elif mode == 'valid':  # extend train data
                 test_id = data_neural[u]['train']
                 for tt in test_id:
                     history.extend([(s[0], s[1]) for s in sessions[tt]])  # train records s
@@ -300,16 +372,17 @@ def generate_input_long_history(data_neural, mode, candidate=None, grid_train=Fa
             trace['target'] = Variable(torch.LongTensor(target))
             data_train[u][i] = trace  # history_loc, history_tim, history_count, loc
             if data_name:
-                raw_loc_tim = raw_history  # [vid, tid]
-                raw_loc_tim.extend([(s[0], s[1]) for s in raw_s[:-1]])  # until recently
-                raw_loc_np = [s[0] for s in raw_loc_tim]
-                raw_tim_np = [s[1] for s in raw_loc_tim]
-                x = zip(raw_loc_np, raw_tim_np)
-                if grid:
-                    grid_loc_np = [grid[i] for i in [s[0] for s in loc_tim]]
-                    x = zip(grid_loc_np, raw_tim_np)
-                y = zip(raw_target, raw_target_tim)
-                ww = '\t'.join([str(raw_u), str(x), str(i), str(y)])
+                # # history input
+                # raw_loc_tim = raw_history  # [vid, tid]
+                # raw_loc_tim.extend([(s[0], s[1]) for s in raw_s[:-1]])  # until recently
+                # raw_loc_np = [s[0] for s in raw_loc_tim]
+                # raw_tim_np = [s[1] for s in raw_loc_tim]
+                # x = zip(raw_loc_np, raw_tim_np)
+                # if grid:
+                #     grid_loc_np = [grid[i] for i in [s[0] for s in loc_tim]]
+                #     x = zip(grid_loc_np, raw_tim_np)
+                y = zip(raw_target, raw_target_tim)  # [raw pid, raw tim]
+                ww = '\t'.join([str(raw_u), str(y)])
                 w.write(ww + '\n')
         train_idx[u] = train_id
     if data_name:
@@ -350,17 +423,18 @@ def get_acc(target, scores, grid=None):
     val, idxx = scores.data.topk(10, 1)  # top 10 predictions
     predx = idxx.cpu().numpy()
     acc = np.zeros((3, 1))
-    for i, p in enumerate(predx):  # enumerate for the number of targets
-        t = target[i]
-        if grid:  # grid evaluation mode
-            t = grid[t]
-            p = [grid[i] for i in p]
-        if t in p[:10] and t > 0:
-            acc[0] += 1  # top10
-        if t in p[:5] and t > 0:
-            acc[1] += 1  # top5
-        if t == p[0] and t > 0:
-            acc[2] += 1  # top1
+    # for i, p in enumerate(predx):  # enumerate for the number of targets
+    t = target[-1]
+    p = predx[-1]
+    if grid:  # grid evaluation mode
+        t = grid[t]
+        p = [grid[i] for i in p]
+    if t in p[:10] and t > 0:
+        acc[0] += 1  # top10
+    if t in p[:5] and t > 0:
+        acc[1] += 1  # top5
+    if t == p[0] and t > 0:
+        acc[2] += 1  # top1
     return acc
 
 
@@ -412,8 +486,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         u, i = run_queue.popleft()  # uid, train|test sid
         if u not in users_acc:
             users_acc[u] = [0, 0]  # [total # of target records, # of correct predictions]
-        loc = data[u][i]['loc'].cuda()  # cumulative loc up to session i[-1]
-        tim = data[u][i]['tim'].cuda()  # cumulative tim up to session i[-1]
+        loc = data[u][i]['loc'].cuda()  # cumulative loc up to session_i[-1]
+        tim = data[u][i]['tim'].cuda()  # cumulative tim up to session_i[-1]
         target = data[u][i]['target'].cuda()  # [vid], answer vid of session_i[1:]
         uid = Variable(torch.LongTensor([u])).cuda()
 
@@ -447,7 +521,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
                 pass
             optimizer.step()
         elif mode == 'test':
-            users_acc[u][0] += len(target)
+            users_acc[u][0] += 1  # len(target)
             acc = get_acc(target, scores)
             if grid_eval:
                 acc = get_acc(target, scores, grid=grid)
