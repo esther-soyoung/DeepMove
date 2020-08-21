@@ -170,6 +170,7 @@ def run(args):
     sys.stdout.flush()
     avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
                                               optimizer, criterion, parameters.model_mode,
+                                            #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mapping
                                               grid=parameters.grid_lookup)
     print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
     sys.stdout.flush()
@@ -240,7 +241,7 @@ if __name__ == '__main__':
     parser.add_argument('--dropout_p', type=float, default=0.3)
     parser.add_argument('--data_name', type=str, default='foursquare')
     parser.add_argument('--learning_rate', type=float, default=5 * 1e-4)
-    parser.add_argument('--lr_step', type=int, default=2)
+    parser.add_argument('--lr_step', type=int, default=2)  # 3
     parser.add_argument('--lr_decay', type=float, default=0.1)
     parser.add_argument('--optim', type=str, default='Adam', choices=['Adam', 'SGD'])
     parser.add_argument('--L2', type=float, default=1 * 1e-5, help=" weight decay (L2 penalty)")

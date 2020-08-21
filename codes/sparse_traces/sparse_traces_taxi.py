@@ -33,7 +33,7 @@ def load_venues_from_tweets(path, header):
             v.readline()
         for line in v:
             taxi_seq, year, month, day, hour, minute, second, lat, lon = line.strip('\r\n').split('\t')
-            poi[(float(lon), float(lat))] = cnt
+            poi[(round(float(lon), 6), round(float(lat), 6))] = cnt
             cnt += 1
     return poi
 
@@ -71,7 +71,7 @@ def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon],
 
 class DataTaxi(object):
     def __init__(self, trace_min=10, global_visit=10, minute_gap=5, min_gap=4, session_min=2, session_max=10,
-                 sessions_min=2, train_split=0.8, embedding_len=50, header=True, grid=None):
+                 sessions_min=2, train_split=0.8, embedding_len=50, header=True, grid=True):
         tmp_path = "../../data/Taxi/"
         self.TWITTER_PATH = tmp_path + 'merged_cleaned_taxi_data.txt'
         # self.VENUES_PATH = tmp_path + 'venues_all.txt'
@@ -92,7 +92,8 @@ class DataTaxi(object):
 
         self.train_split = train_split
 
-        self.data = {}
+        # self.data = {}
+        self.data = defaultdict(dict)  # key: uid, val: dict('index': list(record index), 'record': list([pid, tim]))
         self.venues = {}
         self.pois = load_venues_from_tweets(self.TWITTER_PATH, self.header)  # key: (lon, lat), val: pid
         _raw_xy = self.pois.keys()
@@ -109,7 +110,8 @@ class DataTaxi(object):
         self.uid_list = {}
         self.vid_list = {'unk': [0, -1]}
         self.vid_list_lookup = {}  # key: int vid, val: raw pid
-        self.vid_lookup = {}
+        self.vid_lookup = {}  # key: int vid, val: [float(lon), float(lat)]
+        self.index_lookup = {}  # key: raw uid, val: dict(sid: [record index])
         self.pid_loc_lat = {}
         self.data_neural = {}
 
@@ -121,6 +123,9 @@ class DataTaxi(object):
                 fid.readline()
             for i, line in enumerate(fid):
                 taxi_seq, year, month, day, hour, minute, second, lat, lon = line.strip('\r\n').split('\t')
+                pid = self.pois[(round(float(lon), 6), round(float(lat), 6))]  # pid
+                if self.grid:
+                    pid = self.grids[pid]  # key: raw pid, val: grid id 
                 uid = taxi_seq.split('.')[0]
                 year = year.split('.')[0]
                 month = month.split('.')[0].zfill(2)
@@ -128,17 +133,15 @@ class DataTaxi(object):
                 hour = hour.split('.')[0].zfill(2)
                 minute = minute.split('.')[0].zfill(2)
                 second = second.split('.')[0].zfill(2)
-                pid = self.pois[(float(lon), float(lat))]  # pid
-                import pdb
-                pdb.set_trace()
-                if self.grid:
-                    pid = self.grids[pid]  # key: raw pid, val: grid id 
                 tim = '%s-%s-%s %s:%s:%s' %(year, month, day, hour, minute, second)
-
                 if uid not in self.data:
-                    self.data[uid] = [[pid, tim]]
+                    self.data[uid]['index'] = [i]
+                    self.data[uid]['record'] = [[pid, tim]]
+                    # self.data[uid] = [[pid, tim]]
                 else:
-                    self.data[uid].append([pid, tim])
+                    self.data[uid]['index'].append(i)
+                    self.data[uid]['record'].append([pid, tim])
+                    # self.data[uid].append([pid, tim])
                 if pid not in self.venues:
                     self.venues[pid] = 1
                 else:
@@ -147,9 +150,11 @@ class DataTaxi(object):
     # ########### 3.0 basically filter users based on visit length and other statistics
     def filter_users_by_length(self):
         # filter out uses with <= 10 records
-        uid_3 = [x for x in self.data if len(self.data[x]) > self.trace_len_min]
+        # uid_3 = [x for x in self.data if len(self.data[x]) > self.trace_len_min]
+        uid_3 = [x for x in self.data if len(self.data[x]['record']) > self.trace_len_min]
         # sort users by the number of records, descending order
-        pick3 = sorted([(x, len(self.data[x])) for x in uid_3], key=lambda x: x[1], reverse=True)
+        # pick3 = sorted([(x, len(self.data[x])) for x in uid_3], key=lambda x: x[1], reverse=True)
+        pick3 = sorted([(x, len(self.data[x]['record'])) for x in uid_3], key=lambda x: x[1], reverse=True)
         # filter out venues with less than or equal to 10 visits
         pid_3 = [x for x in self.venues if self.venues[x] > self.location_global_visit_min]
         # sort venues by the number of visits, descending order
@@ -159,11 +164,15 @@ class DataTaxi(object):
         session_len_list = []
         for u in pick3:  # users with > 10 records. [(uid, number of records)]
             uid = u[0]
-            info = self.data[uid]  # [[pid, tim]]
+            # info = self.data[uid]  # [[pid, tim]]
+            indices = self.data[uid]['index']  # [record index]
+            info = self.data[uid]['record']  # [[pid, tim]]
+            assert len(indices) == len(info)
             topk = Counter([x[0] for x in info]).most_common()  # pid, number of visits (descending order)
             # pid of locations visited more than once
             topk1 = [x[0] for x in topk if x[1] > 1]
             sessions = {}
+            index = {}
             for i, record in enumerate(info):
                 poi, tmd = record
                 try:
@@ -177,30 +186,40 @@ class DataTaxi(object):
                 # else, add this [pid, tmd] as session
                 if i == 0 or len(sessions) == 0:
                     sessions[sid] = [record]
+                    index[sid] = [indices[i]]
                 else:
                     # if minute gap since last record > 5 | last session has > 10 records, start new session
                     if (tid - last_tid) / 60 > self.minute_gap or len(sessions[sid - 1]) > self.session_max:
                         sessions[sid] = [record]
+                        index[sid] = [indices[i]]
                     # if the record is apart from the last record for
                     # <= 72 hours, and
                     # > 10 minutes,
                     # then append record to the last session
                     elif (tid - last_tid) / 60 > self.min_gap:
                         sessions[sid - 1].append(record)
+                        index[sid-1].append(indices[i])
                     # if the record is apart from the last record for <= 4 minutes
                     else:
                         pass
                 last_tid = tid
+
             sessions_filter = {}  # key: filtered sid, val: [[raw pid, raw tim]]
+            index_filter = {}
             for s in sessions:  # sid
                 # sessions with records >= 5
                 if len(sessions[s]) >= self.filter_short_session:
                     sessions_filter[len(sessions_filter)] = sessions[s]
+                    index_filter[len(sessions_filter)-1] = index[s]  # record index
                     session_len_list.append(len(sessions[s]))
             # if the filtered sessions(sessions with >= 5 records) are >= 5
             if len(sessions_filter) >= self.sessions_count_min:
                 self.data_filter[uid] = {'sessions_count': len(sessions_filter), 'topk_count': len(topk), 'topk': topk,
                                          'sessions': sessions_filter, 'raw_sessions': sessions}
+                self.index_lookup[uid] = index_filter
+                assert len(self.index_lookup[uid]) == len(sessions_filter)
+                assert sum([len(self.index_lookup[uid][s]) for s in sessions_filter.keys()]) == sum([len(sessions_filter[s]) for s in sessions_filter.keys()])
+
         # list of uid in filtered sessions
         self.user_filter3 = [x for x in self.data_filter if
                              self.data_filter[x]['sessions_count'] >= self.sessions_count_min]
@@ -227,10 +246,10 @@ class DataTaxi(object):
                 fid.readline()  # header
             for line in fid:
                 taxi_seq, year, month, day, hour, minute, second, lat, lon = line.strip('\r\n').split('\t')
-                pid = self.pois[(float(lon), float(lat))]
+                pid = self.pois[(round(float(lon), 6), round(float(lat), 6))]
                 if self.grid:
                     pid = self.grids[pid]
-                self.pid_loc_lat[pid] = [float(lon), float(lat)]
+                self.pid_loc_lat[pid] = [round(float(lon), 6), round(float(lat), 6)]
 
     def venues_lookup(self):
         for vid in self.vid_list_lookup:  # int vid
@@ -264,10 +283,15 @@ class DataTaxi(object):
                                       sessions[sid]]  # [[int vid, int tid]]
                 sessions_id.append(sid)
             split_id = int(np.floor(self.train_split * len(sessions_id)))  # 0.8
+            split_valid_id = int(split_id + np.floor((len(sessions_id) - split_id) / 2))
+
             train_id = sessions_id[:split_id]  # 0.8 from the beginning
-            test_id = sessions_id[split_id:]  # the rest
+            valid_id = sessions_id[split_id:split_valid_id]
+            test_id = sessions_id[split_valid_id:]
+            # test_id = sessions_id[split_id:]  # the rest
             pred_len = sum([len(sessions_tran[i]) - 1 for i in train_id])  # train sid
             valid_len = sum([len(sessions_tran[i]) - 1 for i in test_id])  # test sid
+
             train_loc = {}  # key: int vid, val: # of visits
             for i in train_id:
                 for sess in sessions_tran[i]:  # [int vid, int tid]
@@ -304,7 +328,9 @@ class DataTaxi(object):
             center = np.repeat(center, axis=0, repeats=len(lon_lat))
             rg = np.sqrt(np.mean(np.sum((lon_lat - center) ** 2, axis=1, keepdims=True), axis=0))[0]
 
-            self.data_neural[self.uid_list[u][0]] = {'sessions': sessions_tran, 'train': train_id, 'test': test_id,
+            # self.data_neural[self.uid_list[u][0]] = {'sessions': sessions_tran, 'train': train_id, 'test': test_id,
+            self.data_neural[self.uid_list[u][0]] = {'sessions': sessions_tran,
+                                                     'train': train_id, 'valid': valid_id, 'test': test_id,
                                                      'pred_len': pred_len, 'valid_len': valid_len,
                                                      'train_loc': train_loc, 'explore': location_ratio,
                                                      'entropy': entropy, 'rg': rg}
@@ -314,7 +340,6 @@ class DataTaxi(object):
         parameters = {}
         parameters['TWITTER_PATH'] = self.TWITTER_PATH
         parameters['SAVE_PATH'] = self.SAVE_PATH
-
         parameters['trace_len_min'] = self.trace_len_min
         parameters['location_global_visit_min'] = self.location_global_visit_min
         # parameters['hour_gap'] = self.hour_gap
@@ -330,7 +355,8 @@ class DataTaxi(object):
     def save_variables(self):
         taxi_dataset = {'data_neural': self.data_neural, 'vid_list': self.vid_list, 'uid_list': self.uid_list,
                               'parameters': self.get_parameters(), 'data_filter': self.data_filter,
-                              'vid_lookup': self.vid_lookup}
+                              'vid_lookup': self.vid_lookup, 'index_lookup': self.index_lookup}
+                            #   'vid_lookup': self.vid_lookup}
         pickle.dump(taxi_dataset, open(self.SAVE_PATH + self.save_name + '.pk', 'wb'))
 
 
@@ -345,7 +371,7 @@ def parse_args():
     parser.add_argument('--session_max', type=int, default=10, help="control the length of session not too long")
     parser.add_argument('--session_min', type=int, default=5, help="control the length of session not too short")
     parser.add_argument('--sessions_min', type=int, default=5, help="the minimum amount of the good user's sessions")
-    parser.add_argument('--train_split', type=float, default=0.8, help="train/test ratio")
+    parser.add_argument('--train_split', type=float, default=0.7, help="train/test ratio")
     parser.add_argument('--header', type=bool, default=True, help="data has a header line")
     parser.add_argument('--grid', type=bool, default=True, help="use grid id instead of pid")
     return parser.parse_args()
