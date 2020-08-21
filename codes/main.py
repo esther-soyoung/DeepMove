@@ -9,7 +9,7 @@ import torch.optim as optim
 
 import sys
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import json
 import time
 import argparse
@@ -34,7 +34,7 @@ def run(args):
                                   clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
                                   model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)
     logger.info('*' * 15 + 'loaded parameters' + '*' * 15)
-    parameters.write_tsv()
+    # parameters.write_tsv()
     argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
             'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
             'dropout_p': args.dropout_p, 'data_name': args.data_name, 'learning_rate': args.learning_rate,
