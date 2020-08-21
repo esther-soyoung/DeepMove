@@ -280,6 +280,7 @@ if __name__ == '__main__':
     if args.pretrain == 1:
         args = load_pretrained_model(args)
 
+    os.mkdir(args.save_path)
     logger = get_logger(logpath=os.path.join(args.save_path, 'logs'), filepath=os.path.abspath(__file__))
     logger.info(args)
 
