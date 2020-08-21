@@ -15,6 +15,7 @@ import time
 import argparse
 import numpy as np
 from json import encoder
+import logging
 
 encoder.FLOAT_REPR = lambda o: format(o, '.3f')
 
@@ -32,8 +33,7 @@ def run(args):
                                   optim=args.optim, attn_type=args.attn_type,
                                   clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
                                   model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)
-    print('*' * 15 + 'loaded parameters' + '*' * 15)
-    sys.stdout.flush()
+    logger.info('*' * 15 + 'loaded parameters' + '*' * 15)
     parameters.write_tsv()
     argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
             'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
@@ -41,11 +41,9 @@ def run(args):
             'lr_step': args.lr_step, 'lr_decay': args.lr_decay, 'L2': args.L2, 'act_type': 'selu',
             'optim': args.optim, 'attn_type': args.attn_type, 'clip': args.clip, 'rnn_type': args.rnn_type,
             'epoch_max': args.epoch_max, 'history_mode': args.history_mode, 'model_mode': args.model_mode}
-    print('*' * 15 + 'start training' + '*' * 15)
-    sys.stdout.flush()
-    print('model_mode:{} history_mode:{} users:{}'.format(
+    logger.info('*' * 15 + 'start training' + '*' * 15)
+    logger.info('model_mode:{} history_mode:{} users:{}'.format(
         parameters.model_mode, parameters.history_mode, parameters.uid_size))
-    sys.stdout.flush()
 
     if parameters.model_mode in ['simple', 'simple_long']:
         model = TrajPreSimple(parameters=parameters).cuda()
@@ -108,11 +106,11 @@ def run(args):
                                                               raw_sess=parameters.data_filter)  # write data_name.tsv
             data_valid, valid_idx = generate_input_long_history(parameters.data_neural, 'valid', candidate=candidate)
 
-    print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
+    logger.info('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                        len([y for x in train_idx for y in train_idx[x]]),
                                                        len([y for x in test_idx for y in test_idx[x]])))
-    sys.stdout.flush()
     SAVE_PATH = args.save_path
+    os.mkdir(SAVE_PATH)
     tmp_path = 'checkpoint/'
     os.mkdir(SAVE_PATH + tmp_path)
 
@@ -122,8 +120,7 @@ def run(args):
         if args.pretrain == 0:
             model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
                                          criterion, parameters.model_mode)
-            print('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
-            sys.stdout.flush()
+            logger.info('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
             metrics['train_loss'].append(avg_loss)
 
         # validation
@@ -131,8 +128,7 @@ def run(args):
                                                   optimizer, criterion, parameters.model_mode,
                                                 #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mapping
                                                   grid=parameters.grid_lookup)
-        print('==>Validation Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
-        sys.stdout.flush()
+        logger.info('==>Validation Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
         # if epoch % 20 == 0:
             # writer.add_scalar('avg_loss', avg_loss, epoch)
             # writer.add_scalar('avg_acc', avg_acc, epoch)
@@ -151,11 +147,9 @@ def run(args):
             load_epoch = np.argmax(metrics['accuracy'])
             load_name_tmp = 'ep_' + str(load_epoch) + '.m'
             model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
-            print('load epoch={} model state'.format(load_epoch))
-            sys.stdout.flush()
+            logger.info('load epoch={} model state'.format(load_epoch))
         if epoch == 0:
-            print('single epoch time cost:{}'.format(time.time() - st))
-            sys.stdout.flush()
+            logger.info('single epoch time cost:{}'.format(time.time() - st))
         if lr <= 0.9 * 1e-5:
             break
         if args.pretrain == 1:
@@ -166,14 +160,12 @@ def run(args):
     load_name_tmp = 'ep_' + str(mid) + '.m'
     model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
     # test
-    print('*' * 15 + 'start testing' + '*' * 15)
-    sys.stdout.flush()
+    logger.info('*' * 15 + 'start testing' + '*' * 15)
     avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
                                               optimizer, criterion, parameters.model_mode,
                                             #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mapping
                                               grid=parameters.grid_lookup)
-    print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
-    sys.stdout.flush()
+    logger.info('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
 
     save_name = 'res'
     json.dump({'args': argv, 'metrics': metrics}, fp=open(SAVE_PATH + save_name + '.rs', 'w'), indent=4)
@@ -201,6 +193,33 @@ def load_pretrained_model(config):
         res = json.load(open("../pretrain/" + config.model_mode + "/res.txt"))
     args = Settings(config, res["args"])
     return args
+
+
+def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True, debug=False):
+    logger = logging.getLogger()
+    if debug:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+    logger.setLevel(level)
+    if saving:
+        info_file_handler = logging.FileHandler(logpath, mode="a")
+        info_file_handler.setLevel(level)
+        logger.addHandler(info_file_handler)
+    if displaying:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(level)
+        logger.addHandler(console_handler)
+    logger.info(filepath)
+    with open(filepath, "r") as f:
+        logger.info(f.read())
+
+    for f in package_files:
+        logger.info(f)
+        with open(f, "r") as package_f:
+            logger.info(package_f.read())
+
+    return logger
 
 
 class Settings(object):
@@ -260,5 +279,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.pretrain == 1:
         args = load_pretrained_model(args)
+
+    logger = get_logger(logpath=os.path.join(args.save_path, 'logs'), filepath=os.path.abspath(__file__))
+    logger.info(args)
 
     ours_acc = run(args)
