@@ -111,7 +111,8 @@ def run(args):
                                                        len([y for x in test_idx for y in test_idx[x]])))
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
-    os.makedirs(SAVE_PATH + tmp_path)
+    if not os.path.exists(SAVE_PATH + tmp_path):
+        os.makedirs(SAVE_PATH + tmp_path)
 
     # writer = SummaryWriter(args.data_name)
     for epoch in range(parameters.epoch):
@@ -279,7 +280,8 @@ if __name__ == '__main__':
     if args.pretrain == 1:
         args = load_pretrained_model(args)
 
-    os.makedirs(args.save_path)
+    if not os.path.exists(args.save_path):
+        os.makedirs(args.save_path)
     logger = get_logger(logpath=os.path.join(args.save_path, 'logs'), filepath=os.path.abspath(__file__))
     logger.info(args)
 
