@@ -112,7 +112,7 @@ def run(args):
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
     if os.path.exists(SAVE_PATH + tmp_path):  # load checkpoint
-        load_epoch = 4
+        load_epoch = args.load_checkpoint
         load_name_tmp = 'ep_' + str(load_epoch) + '.m'
         model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
     else:  # create checkpoint
@@ -278,6 +278,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_mode', type=str, default='attn_local_long',
                         choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
     parser.add_argument('--pretrain', type=int, default=1)
+    parser.add_argument('--load_checkpoint', type=int, default=None)  # checkpoint to load
     # parser.add_argument('--grid_train', type=bool, default=False)
     # parser.add_argument('--grid_eval', type=bool, default=False)
     args = parser.parse_args()
