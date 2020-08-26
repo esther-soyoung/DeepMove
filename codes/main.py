@@ -111,11 +111,15 @@ def run(args):
                                                        len([y for x in test_idx for y in test_idx[x]])))
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
-    if not os.path.exists(SAVE_PATH + tmp_path):
+    if os.path.exists(SAVE_PATH + tmp_path):  # load checkpoint
+        load_epoch = 4
+        load_name_tmp = 'ep_' + str(load_epoch) + '.m'
+        model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
+    else:  # create checkpoint
         os.makedirs(SAVE_PATH + tmp_path)
 
     # writer = SummaryWriter(args.data_name)
-    for epoch in range(parameters.epoch):
+    for epoch in range(parameters.epoch):  # 20
         st = time.time()
         if args.pretrain == 0:
             model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
