@@ -9,7 +9,7 @@ import torch.optim as optim
 
 import sys
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 import json
 import time
 import argparse

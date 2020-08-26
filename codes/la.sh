@@ -1,6 +1,6 @@
 #!/bin/sh
 DATA='foursquare_la2'
-DATADIR='../data/pickles/'
+DATADIR='../data/LA/'
 PRETRAIN=0
 
 # L2
