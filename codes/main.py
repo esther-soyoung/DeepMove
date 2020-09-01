@@ -55,9 +55,9 @@ def run(args):
         if 'taxi' in args.data_name:  # taxi
             model.load_state_dict(torch.load("../results_taxi/" + args.model_mode + "/res.m"))
         elif 'la' in args.data_name:  # la
-            model.load_state_dict(torch.load("../results_la/" + args.model_mode + "/res.m"))
+            model.load_state_dict(torch.load("./la/lr_00005/res.m"))
         elif 'foursquare' in args.data_name:  # ny
-            model.load_state_dict(torch.load("../pretrain/" + args.model_mode + "/res.m"))
+            model.load_state_dict(torch.load("./ny/lr_00005/res.m"))
 
     if 'max' in parameters.model_mode:
         parameters.history_mode = 'max'
@@ -169,7 +169,8 @@ def run(args):
                                               optimizer, criterion, parameters.model_mode,
                                             #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mapping
                                               grid=parameters.grid_lookup)
-    logger.info('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
+    logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Mean Rank:{:.4f} Loss:{:.4f}'.format(
+                avg_acc, avg_loss))
 
     save_name = 'res'
     json.dump({'args': argv, 'metrics': metrics}, fp=open(SAVE_PATH + save_name + '.rs', 'w'), indent=4)
@@ -192,9 +193,9 @@ def load_pretrained_model(config):
     if 'taxi' in config.data_name:  # taxi
         res = json.load(open("../results_taxi/" + config.model_mode + "/res.txt"))
     elif 'la' in config.data_name:  # la
-        res = json.load(open("../results_la/" + config.model_mode + "/res.txt"))
+        res = json.load(open("./la/lr_00005/res.txt"))
     elif 'foursquare' in config.data_name:  # ny
-        res = json.load(open("../pretrain/" + config.model_mode + "/res.txt"))
+        res = json.load(open("./ny/lr_00005/res.txt"))
     args = Settings(config, res["args"])
     return args
 
@@ -262,7 +263,7 @@ if __name__ == '__main__':
     parser.add_argument('--tim_emb_size', type=int, default=10, help="time embeddings size")
     parser.add_argument('--hidden_size', type=int, default=500)
     parser.add_argument('--dropout_p', type=float, default=0.3)
-    parser.add_argument('--data_name', type=str, default='foursquare')
+    parser.add_argument('--data_name', type=str, default='foursquare2')
     parser.add_argument('--learning_rate', type=float, default=5 * 1e-4)
     parser.add_argument('--lr_step', type=int, default=2)  # 3
     parser.add_argument('--lr_decay', type=float, default=0.1)
@@ -273,12 +274,12 @@ if __name__ == '__main__':
     parser.add_argument('--history_mode', type=str, default='avg', choices=['max', 'avg', 'whole'])
     parser.add_argument('--rnn_type', type=str, default='LSTM', choices=['LSTM', 'GRU', 'RNN'])
     parser.add_argument('--attn_type', type=str, default='dot', choices=['general', 'concat', 'dot'])
-    parser.add_argument('--data_path', type=str, default='../data/')
-    parser.add_argument('--save_path', type=str, default='../results/')
+    parser.add_argument('--data_path', type=str, default='../data/Foursquare')
+    parser.add_argument('--save_path', type=str, default='../out/')
     parser.add_argument('--model_mode', type=str, default='attn_local_long',
                         choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
-    parser.add_argument('--pretrain', type=int, default=1)
     parser.add_argument('--load_checkpoint', type=int, default=None)  # checkpoint to load
+    parser.add_argument('--pretrain', type=int, default=1)
     # parser.add_argument('--grid_train', type=bool, default=False)
     # parser.add_argument('--grid_eval', type=bool, default=False)
     args = parser.parse_args()

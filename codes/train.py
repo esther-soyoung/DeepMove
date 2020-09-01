@@ -412,6 +412,7 @@ def get_acc(target, scores, grid=None):
     val, idxx = scores.data.topk(10, 1)  # top 10 predictions
     predx = idxx.cpu().numpy()
     acc = np.zeros((3, 1))
+    rank = 0
     for i, p in enumerate(predx):  # enumerate for the number of targets
         t = target[i]
         if grid:  # grid evaluation mode
@@ -421,9 +422,12 @@ def get_acc(target, scores, grid=None):
             acc[0] += 1  # top10
         if t in p[:5] and t > 0:
             acc[1] += 1  # top5
+            import pdb
+            pdb.set_trace()
+            rank += np.where(p[:5]==t)
         if t == p[0] and t > 0:
             acc[2] += 1  # top1
-    return acc
+    return acc, rank
 
 
 def get_hint(target, scores, users_visited):
@@ -473,7 +477,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         optimizer.zero_grad()
         u, i = run_queue.popleft()  # uid, train|test sid
         if u not in users_acc:
-            users_acc[u] = [0, 0]  # [total # of target records, # of correct predictions]
+            users_acc[u] = [0, 0, 0, 0]  # [total # of target records, # of correct predictions]
         loc = data[u][i]['loc'].cuda()  # cumulative loc up to session_i[-1]
         tim = data[u][i]['tim'].cuda()  # cumulative tim up to session_i[-1]
         target = data[u][i]['target'].cuda()  # [vid], answer vid of session_i[1:]
@@ -510,10 +514,12 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             optimizer.step()
         elif mode == 'test':
             users_acc[u][0] += len(target)
-            acc = get_acc(target, scores)
+            acc, rank = get_acc(target, scores)
             if grid_eval:
-                acc = get_acc(target, scores, grid=grid)
-            users_acc[u][1] += acc[2]
+                acc, rank = get_acc(target, scores, grid=grid)
+            users_acc[u][1] += acc[2]  # top1
+            users_acc[u][2] += acc[1]  # top5
+            users_acc[u][3] += rank  # rank
         total_loss.append(loss.data.cpu().numpy()[0])
 
     avg_loss = np.mean(total_loss, dtype=np.float64)
