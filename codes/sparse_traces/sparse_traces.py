@@ -55,8 +55,8 @@ class DataFoursquare(object):
         self.user_filter3 = None
         self.uid_list = {}  # key: raw uid, val: [int uid, number of sessions]
         self.vid_list = {'unk': [0, -1]}  # key: raw pid
-        self.vid_list_lookup = {}  # key: int vid, val: raw pid
-        self.vid_lookup = {}  # key: int vid, val: [float(lon), float(lat)]
+        self.vid_list_lookup = {}  # key: int pid, val: raw poi
+        self.vid_lookup = {}  # key: int pid, val: [float(lon), float(lat)]
         self.index_lookup = {}  # key: raw uid, val: dict(sid: [record index])
         self.pid_loc_lat = {}
         self.data_neural = {}
