@@ -35,6 +35,8 @@ def run(args):
                                   model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)
     logger.info('*' * 15 + 'loaded parameters' + '*' * 15)
     # parameters.write_tsv()
+    # sys.exit()
+
     argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
             'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
             'dropout_p': args.dropout_p, 'data_name': args.data_name, 'learning_rate': args.learning_rate,
@@ -77,8 +79,8 @@ def run(args):
     metrics = {'train_loss': [], 'valid_loss': [], 'accuracy': [], 'valid_acc': {}}
 
     candidate = parameters.data_neural.keys()  # list(uid)
-    avg_acc_markov, users_acc_markov = markov(parameters, candidate)
-    metrics['markov_acc'] = users_acc_markov
+    # avg_acc_markov, users_acc_markov = markov(parameters, candidate)
+    # metrics['markov_acc'] = users_acc_markov
 
     if 'long' in parameters.model_mode:
         long_history = True
@@ -95,7 +97,7 @@ def run(args):
             data_train, train_idx = generate_input_long_history2(parameters.data_neural, 'train', candidate=candidate)
             data_test, test_idx = generate_input_long_history2(parameters.data_neural, 'test', candidate=candidate)
         else:
-            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
+            # data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
                                                                 # grid_train=args.grid_train,  # train with grid id instaed of pid
                                                                 # grid=parameters.grid_lookup)  
             data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate,
@@ -104,34 +106,36 @@ def run(args):
                                                             #   data_name=parameters.data_name,  # write data_name.tsv
                                                               raw_uid=parameters.uid_lookup,  # write data_name.tsv
                                                               raw_sess=parameters.data_filter)  # write data_name.tsv
-            data_valid, valid_idx = generate_input_long_history(parameters.data_neural, 'valid', candidate=candidate)
+            # data_valid, valid_idx = generate_input_long_history(parameters.data_neural, 'valid', candidate=candidate)
 
-    logger.info('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
-                                                       len([y for x in train_idx for y in train_idx[x]]),
-                                                       len([y for x in test_idx for y in test_idx[x]])))
+    # logger.info('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
+                                                    #    len([y for x in train_idx for y in train_idx[x]]),
+                                                    #    len([y for x in test_idx for y in test_idx[x]])))
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
-    if os.path.exists(SAVE_PATH + tmp_path):  # load checkpoint
-        load_epoch = args.load_checkpoint
-        load_name_tmp = 'ep_' + str(load_epoch) + '.m'
-        model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
-    else:  # create checkpoint
+    if not os.path.exists(SAVE_PATH + tmp_path):  # load checkpoint
         os.makedirs(SAVE_PATH + tmp_path)
+    # else:  # create checkpoint
+        # load_epoch = args.load_checkpoint
+        # load_name_tmp = 'ep_' + str(load_epoch) + '.m'
+        # model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
 
     # writer = SummaryWriter(args.data_name)
     for epoch in range(parameters.epoch):  # 20
+        if args.pretrain == 1:
+            break
         st = time.time()
         if args.pretrain == 0:
             model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
-                                         criterion, parameters.model_mode)
+                                        criterion, parameters.model_mode)
             logger.info('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
             metrics['train_loss'].append(avg_loss)
 
         # validation
         avg_loss, avg_acc, users_acc = run_simple(data_valid, valid_idx, 'test', lr, parameters.clip, model,
-                                                  optimizer, criterion, parameters.model_mode,
+                                                optimizer, criterion, parameters.model_mode,
                                                 #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mapping
-                                                  grid=parameters.grid_lookup)
+                                                grid=parameters.grid_lookup)
         logger.info('==>Validation Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
         # if epoch % 20 == 0:
             # writer.add_scalar('avg_loss', avg_loss, epoch)
@@ -159,18 +163,21 @@ def run(args):
         if args.pretrain == 1:
             break
 
-    mid = np.argmax(metrics['accuracy'])
-    avg_acc = metrics['accuracy'][mid]
-    load_name_tmp = 'ep_' + str(mid) + '.m'
-    model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
+    # mid = np.argmax(metrics['accuracy'])
+    # avg_acc = metrics['accuracy'][mid]
+    # load_name_tmp = 'ep_' + str(mid) + '.m'
+    # model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
     # test
     logger.info('*' * 15 + 'start testing' + '*' * 15)
     avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
                                               optimizer, criterion, parameters.model_mode,
-                                            #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mapping
+                                            #   grid_eval=True,  # accuracy eval시에만 grid mapping
                                               grid=parameters.grid_lookup)
     logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Mean Rank:{:.4f} Loss:{:.4f}'.format(
-                avg_acc, avg_loss))
+                avg_acc, 
+                np.mean([users_acc[x][1] for x in users_acc]),
+                np.mean([users_acc[x][2] for x in users_acc]),
+                avg_loss))
 
     save_name = 'res'
     json.dump({'args': argv, 'metrics': metrics}, fp=open(SAVE_PATH + save_name + '.rs', 'w'), indent=4)
