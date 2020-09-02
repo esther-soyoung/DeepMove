@@ -2,13 +2,13 @@
 DATA='taxi'
 DATADIR='../data/Taxi/'
 PRETRAIN=0
-CHK=4
-EPOCH=16
+CHK=6
+EPOCH=0
 
 python main.py \
 	--data_name $DATA \
 	--data_path $DATADIR \
-	--save_path './taxi_valid/' \
+	--save_path './taxi/' \
 	--pretrain $PRETRAIN \
-	--load_checckpoint $CHK \
+	--load_checkpoint $CHK \
 	--epoch_max $EPOCH

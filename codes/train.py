@@ -123,8 +123,9 @@ class RnnParameterData(object):
                     record = session[i]
                     raw_poi = record[0]
                     int_pid = self.vid_list[raw_poi][0]
-                    grid_id = self.grid_lookup[int_pid]
-                    raw_train[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], raw_poi, int_pid, grid_id])
+                    # grid_id = self.grid_lookup[int_pid]
+                    raw_train[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], int_pid])
+                    # raw_train[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], raw_poi, int_pid, grid_id])
             for sid in data['test']:  # list of test sessions
                 r_idx = self.index_lookup[u][sid]  # corresponding record indices
                 session = self.data_filter[u]['sessions'][sid]  # [[raw pid, raw tim]]
@@ -133,8 +134,9 @@ class RnnParameterData(object):
                     record = session[i]
                     raw_poi = record[0]
                     int_pid = self.vid_list[raw_poi][0]
-                    grid_id = self.grid_lookup[int_pid]
-                    raw_test[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], raw_poi, int_pid, grid_id])
+                    # grid_id = self.grid_lookup[int_pid]
+                    raw_test[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], int_pid])
+                    # raw_test[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], raw_poi, int_pid, grid_id])
             for sid in data['valid']:  # list of test sessions
                 r_idx = self.index_lookup[u][sid]  # corresponding record indices
                 session = self.data_filter[u]['sessions'][sid]  # [[raw pid, raw tim]]
@@ -143,30 +145,37 @@ class RnnParameterData(object):
                     record = session[i]
                     raw_poi = record[0]
                     int_pid = self.vid_list[raw_poi][0]
-                    grid_id = self.grid_lookup[int_pid]
-                    raw_valid[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], raw_poi, int_pid, grid_id])
+                    # grid_id = self.grid_lookup[int_pid]
+                    raw_valid[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], int_pid])
+                    # raw_valid[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], raw_poi, int_pid, grid_id])
 
         # write on files
         w_train = open(self.data_name + '_train.tsv', 'w')
-        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'raw_poi', 'filtered_pid', 'grid_id'])
+        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'filtered_grid'])
+        # l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'raw_poi', 'filtered_pid', 'grid_id'])
         w_train.write(l + '\n')
         for key, val in raw_train.items():  # key: uid, val: list([record_index, [lon, lat], tim, raw poi, int pid, grid_id])
             for v in val:  # list([record_index, [lon, lat], tim])
-                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3]), str(v[4]), str(v[5])])
+                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3])])
+                # l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3]), str(v[4]), str(v[5])])
                 w_train.write(l + '\n')
         w_test = open(self.data_name + '_test.tsv', 'w')
-        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'raw_poi', 'filtered_pid', 'grid_id'])
+        # l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'raw_poi', 'filtered_pid', 'grid_id'])
+        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'filtered_grid'])
         w_test.write(l + '\n')
         for key, val in raw_test.items():  # key: uid, val: list([record_index, [lon, lat], tim, raw poi, int pid, grid_id])
             for v in val:  # [r_idx, [lon, lat], tim]
-                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3]), str(v[4]), str(v[5])])
+                # l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3]), str(v[4]), str(v[5])])
+                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3])])
                 w_test.write(l + '\n')
         w_valid = open(self.data_name + '_valid.tsv', 'w')
-        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'raw_poi', 'filtered_pid', 'grid_id'])
+        # l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'raw_poi', 'filtered_pid', 'grid_id'])
+        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'filtered_grid'])
         w_valid.write(l + '\n')
         for key, val in raw_valid.items():  # key: uid, val: list([record_index, [lon, lat], tim, raw poi, int pid, grid_id])
             for v in val:  # [r_idx, [lon, lat], tim]
-                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3]), str(v[4]), str(v[5])])
+                # l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3]), str(v[4]), str(v[5])])
+                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3])])
                 w_valid.write(l + '\n')
         w_train.close()
         w_test.close()

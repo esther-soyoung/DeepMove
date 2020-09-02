@@ -108,7 +108,7 @@ class DataTaxi(object):
         _raw_x = [i[0] for i in _raw_xy]
         _raw_y = [i[1] for i in _raw_xy]
         _raw_pid = [self.pois[k] for k in _raw_xy]
-        self.grids = geo_grade(_raw_pid, _raw_x, _raw_y)[0]  # key: raw pid, val: grid id
+        self.grids, center_location_list = geo_grade(_raw_pid, _raw_x, _raw_y)  # key: raw pid, val: grid id
         self.words_original = []
         self.words_lens = []
         self.dictionary = dict()
@@ -122,6 +122,10 @@ class DataTaxi(object):
         self.index_lookup = {}  # key: raw uid, val: dict(sid: [record index])
         self.pid_loc_lat = {}
         self.data_neural = {}
+
+        # dataset = {'grid_dictionary': self.vid_lookup, 'center_location_list': center_location_list}
+        # pickle.dump(dataset, open(self.save_name + '_dictionary' + '.pk', 'wb'))
+        # sys.exit()
 
 
     # ############# 1. read trajectory data from twitters
@@ -365,7 +369,7 @@ class DataTaxi(object):
                               'parameters': self.get_parameters(), 'data_filter': self.data_filter,
                               'vid_lookup': self.vid_lookup, 'index_lookup': self.index_lookup}
                             #   'vid_lookup': self.vid_lookup}
-        pickle.dump(taxi_dataset, open(self.SAVE_PATH + self.save_name + '.pk', 'wb'))
+        pickle.dump(taxi_dataset, open(self.SAVE_PATH + self.save_name + '_gap10.pk', 'wb'))
 
 
 def parse_args():
@@ -375,7 +379,8 @@ def parse_args():
     parser.add_argument('--global_visit', type=int, default=10, help="location global visit threshold")
     # parser.add_argument('--hour_gap', type=int, default=72, help="maximum interval of two trajectory points")
     parser.add_argument('--min_gap', type=int, default=4, help="minimum interval of two trajectory points")
-    parser.add_argument('--minute_gap', type=int, default=5, help="maximum interval of two trajectory points")
+    parser.add_argument('--minute_gap', type=int, default=10, help="maximum interval of two trajectory points")
+    # parser.add_argument('--minute_gap', type=int, default=5, help="maximum interval of two trajectory points")
     parser.add_argument('--session_max', type=int, default=10, help="control the length of session not too long")
     parser.add_argument('--session_min', type=int, default=5, help="control the length of session not too short")
     parser.add_argument('--sessions_min', type=int, default=5, help="the minimum amount of the good user's sessions")
