@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import cPickle as pickle
 from collections import deque, Counter, defaultdict
-from math import radians, cos, sin, asin, sqr
+from math import radians, cos, sin, asin, sqrt
 # from scipy.spatial import distance
 
 GRID_COUNT = 100
@@ -462,11 +462,11 @@ def get_acc(target, scores, grid=None, center_location_list=None):
             acc[1] += 1  # top5
         if t == p[0] and t > 0:
             acc[2] += 1  # top1
-        if center_location_list:
+        # if center_location_list:
             # distance error
             # d = distance.euclidean(center_location_list[t], center_location_list[p[0]])
-            d = haversine(center_location_list[t][0], center_location_list[t][1], center_location_list[p[0]][0], center_location_list[p[0]][1])
-            acc[3] += d
+            # d = haversine(center_location_list[t][0], center_location_list[t][1], center_location_list[p[0]][0], center_location_list[p[0]][1])
+            # acc[3] += d
     return acc
 
 
@@ -571,8 +571,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         for u in users_acc:
             top1_acc = users_acc[u][1] / users_acc[u][0]  # user u's top1 accuracy
             top5_acc = users_acc[u][2] / users_acc[u][0]  # user u's top5 accuracy
-            distance_err = users_acc[u][4] / users_acc[u][0]  # user u's distance error
-            users_rnn_acc[u] = (top1_acc.tolist()[0], top5_acc.tolist()[0], distance_err.tolist()[0])  # top1, top5
+            # distance_err = users_acc[u][4] / users_acc[u][0]  # user u's distance error
+            users_rnn_acc[u] = (top1_acc.tolist()[0], top5_acc.tolist()[0]) #, distance_err.tolist()[0])  # top1, top5
         avg_acc = np.mean([users_rnn_acc[x][0] for x in users_rnn_acc])  # average top1 accuracy
         return avg_loss, avg_acc, users_rnn_acc
 

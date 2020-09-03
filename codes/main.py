@@ -9,7 +9,7 @@ import torch.optim as optim
 
 import sys
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 import json
 import time
 import argparse
@@ -174,10 +174,9 @@ def run(args):
                                               grid_eval=grid_eval,  # accuracy eval시에만 grid mapping
                                               grid=parameters.grid_lookup,
                                               center=parameters.center_location_list)
-    logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Avg Distance Err:{:.4f} Loss:{:.4f}'.format(
+    logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Loss:{:.4f}'.format(
                 avg_acc, 
                 np.mean([users_acc[x][1] for x in users_acc]),
-                np.mean([users_acc[x][2] for x in users_acc]),
                 avg_loss))
 
     metrics['valid_loss'].append(avg_loss)
