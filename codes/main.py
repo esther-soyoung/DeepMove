@@ -9,7 +9,7 @@ import torch.optim as optim
 
 import sys
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import json
 import time
 import argparse
@@ -118,7 +118,7 @@ def run(args):
     else:  # load checkpoint
         load_epoch = args.load_checkpoint
         load_name_tmp = 'ep_' + str(load_epoch) + '.m'
-        model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
+        model.load_state_dict(torch.load(SAVE_PATH + load_name_tmp))
         logger.info('*' * 15 + 'loaded checkpoint' + '*' * 15)
 
     # writer = SummaryWriter(args.data_name)
@@ -166,10 +166,14 @@ def run(args):
     # model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
     # test
     logger.info('*' * 15 + 'start testing' + '*' * 15)
+    grid_eval = True
+    if 'taxi' in args.data_name:
+        grid_eval = False
     avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
                                               optimizer, criterion, parameters.model_mode,
-                                            #   grid_eval=True,  # accuracy eval시에만 grid mapping
-                                              grid=parameters.grid_lookup)
+                                              grid_eval=grid_eval,  # accuracy eval시에만 grid mapping
+                                              grid=parameters.grid_lookup,
+                                              center=parameters.center_location_list)
     logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Avg Distance Err:{:.4f} Loss:{:.4f}'.format(
                 avg_acc, 
                 np.mean([users_acc[x][1] for x in users_acc]),
@@ -188,11 +192,11 @@ def run(args):
     json.dump({'args': argv, 'metrics': metrics_view}, fp=open(SAVE_PATH + save_name + '.txt', 'w'), indent=4)
     torch.save(model.state_dict(), SAVE_PATH + save_name + '.m')
 
-    for rt, dirs, files in os.walk(SAVE_PATH + tmp_path):
-        for name in files:
-            remove_path = os.path.join(rt, name)
-            os.remove(remove_path)
-    os.rmdir(SAVE_PATH + tmp_path)
+    # for rt, dirs, files in os.walk(SAVE_PATH + tmp_path):
+    #     for name in files:
+    #         remove_path = os.path.join(rt, name)
+    #         os.remove(remove_path)
+    # os.rmdir(SAVE_PATH + tmp_path)
 
     return avg_acc
 

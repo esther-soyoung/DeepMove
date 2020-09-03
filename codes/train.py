@@ -430,7 +430,7 @@ def generate_queue(train_idx, mode, mode2):
     return train_queue
 
 
-def get_acc(target, scores, grid=None):
+def get_acc(target, scores, grid=None, center_location_list=None):
     """target and scores are torch cuda Variable"""
     target = target.data.cpu().numpy()
     val, idxx = scores.data.topk(10, 1)  # top 10 predictions
@@ -447,9 +447,10 @@ def get_acc(target, scores, grid=None):
             acc[1] += 1  # top5
         if t == p[0] and t > 0:
             acc[2] += 1  # top1
-        # distance error
-        d = distance.euclidean(self.center_location_list[t], self.center_location_list[p[0]])
-        acc[3] += d
+        if center_location_list:
+            # distance error
+            d = distance.euclidean(center_location_list[t], center_location_list[p[0]])
+            acc[3] += d
     return acc
 
 
@@ -476,7 +477,7 @@ def get_hint(target, scores, users_visited):
     return hint, count
 
 
-def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, grid_eval=False, grid=None):
+def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, grid_eval=False, grid=None, center=None):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     try:
@@ -537,9 +538,9 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             optimizer.step()
         elif mode == 'test':
             users_acc[u][0] += len(target)
-            acc, rank = get_acc(target, scores)
+            acc= get_acc(target, scores)
             if grid_eval:
-                acc, rank = get_acc(target, scores, grid=grid)
+                acc = get_acc(target, scores, grid=grid, center_location_list=center)
             users_acc[u][1] += acc[2]  # top1
             users_acc[u][2] += acc[1]  # top5
             users_acc[u][3] += acc[0]  # top10
