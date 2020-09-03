@@ -9,7 +9,8 @@ import sys
 import numpy as np
 import cPickle as pickle
 from collections import deque, Counter, defaultdict
-from scipy.spatial import distance
+from math import radians, cos, sin, asin, sqr
+# from scipy.spatial import distance
 
 GRID_COUNT = 100
 def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon], y: [lat]. 100 by 100
@@ -429,6 +430,20 @@ def generate_queue(train_idx, mode, mode2):
                 train_queue.append((u, i))
     return train_queue
 
+def haversine(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points
+    on the earth (specified in decimal degrees)
+    """
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+
+    # haversine
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    c = 2 * asin(sqrt(a))
+    r = 6371
+    return c * r * 1000
 
 def get_acc(target, scores, grid=None, center_location_list=None):
     """target and scores are torch cuda Variable"""
@@ -449,7 +464,8 @@ def get_acc(target, scores, grid=None, center_location_list=None):
             acc[2] += 1  # top1
         if center_location_list:
             # distance error
-            d = distance.euclidean(center_location_list[t], center_location_list[p[0]])
+            # d = distance.euclidean(center_location_list[t], center_location_list[p[0]])
+            d = haversine(center_location_list[t][0], center_location_list[t][1], center_location_list[p[0]][0], center_location_list[p[0]][1])
             acc[3] += d
     return acc
 
