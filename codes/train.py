@@ -511,6 +511,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         run_queue = generate_queue(run_idx, 'normal', 'test')  # test sid
     total_loss = []
     queue_len = len(run_queue)
+    print('generate_queue completed')
 
     users_acc = {}
     for c in range(queue_len):
@@ -536,6 +537,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         elif mode2 == 'attn_local_long':
             target_len = target.data.size()[0]
             scores = model(loc, tim, target_len)
+            print('model prediction completed')
 
         if scores.data.size()[0] > target.data.size()[0]:
             scores = scores[-target.data.size()[0]:]
@@ -552,6 +554,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             except:
                 pass
             optimizer.step()
+            print('backward completed')
         elif mode == 'test':
             users_acc[u][0] += len(target)
             acc= get_acc(target, scores)
