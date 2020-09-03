@@ -9,6 +9,7 @@ import sys
 import numpy as np
 import cPickle as pickle
 from collections import deque, Counter, defaultdict
+from scipy.spatial import distance
 
 GRID_COUNT = 100
 def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon], y: [lat]. 100 by 100
@@ -71,7 +72,7 @@ class RnnParameterData(object):
         self._raw_xy = [self.vid_lookup[i] for i in self._int_vid]
         self.raw_x = [i[0] for i in self._raw_xy]
         self.raw_y = [i[1] for i in self._raw_xy]
-        self._raw_grid_lookup, center_location_list = geo_grade(self.raw_pid, self.raw_x, self.raw_y)  # key: raw pid, val: grid id
+        self._raw_grid_lookup, self.center_location_list = geo_grade(self.raw_pid, self.raw_x, self.raw_y)  # key: raw pid, val: grid id
         self.grid_lookup = {}  # key: int vid, val: grid id
         for k, v in self.vid_list.items():
             if k == 'unk':
@@ -434,13 +435,9 @@ def get_acc(target, scores, grid=None):
     target = target.data.cpu().numpy()
     val, idxx = scores.data.topk(10, 1)  # top 10 predictions
     predx = idxx.cpu().numpy()
-    acc = np.zeros((3, 1))
-    rank = np.zeros(1)
+    acc = np.zeros((4, 1))
     for i, p in enumerate(predx):  # enumerate for the number of targets
         t = target[i]
-        r = np.where(p==t)[0]
-        if r.size > 0:
-            rank += r
         if grid:  # grid evaluation mode
             t = grid[t]
             p = [grid[i] for i in p]
@@ -450,7 +447,10 @@ def get_acc(target, scores, grid=None):
             acc[1] += 1  # top5
         if t == p[0] and t > 0:
             acc[2] += 1  # top1
-    return acc, rank
+        # distance error
+        d = distance.euclidean(self.center_location_list[t], self.center_location_list[p[0]])
+        acc[3] += d
+    return acc
 
 
 def get_hint(target, scores, users_visited):
@@ -500,7 +500,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         optimizer.zero_grad()
         u, i = run_queue.popleft()  # uid, train|test sid
         if u not in users_acc:
-            users_acc[u] = [0, 0, 0, 0, 0]  # [total # of target records, top1, top5, top10, rank]
+            users_acc[u] = [0, 0, 0, 0, 0]  # [total # of target records, top1, top5, top10, distance_error]
         loc = data[u][i]['loc'].cuda()  # cumulative loc up to session_i[-1]
         tim = data[u][i]['tim'].cuda()  # cumulative tim up to session_i[-1]
         target = data[u][i]['target'].cuda()  # [vid], answer vid of session_i[1:]
@@ -543,9 +543,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             users_acc[u][1] += acc[2]  # top1
             users_acc[u][2] += acc[1]  # top5
             users_acc[u][3] += acc[0]  # top10
-            users_acc[u][4] += rank  # rank within top10
-            import pdb
-            pdb.set_trace()
+            users_acc[u][4] += acc[3]  # distance error
         total_loss.append(loss.data.cpu().numpy()[0])
 
     avg_loss = np.mean(total_loss, dtype=np.float64)
@@ -556,9 +554,9 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         for u in users_acc:
             top1_acc = users_acc[u][1] / users_acc[u][0]  # user u's top1 accuracy
             top5_acc = users_acc[u][2] / users_acc[u][0]  # user u's top5 accuracy
-            mean_rank = users_acc[u][4] / users_acc[u][3]  # user u's mean rank within top10
-            users_rnn_acc[u] = (top1_acc.tolist()[0], top5_acc.tolist()[0], mean_rank.tolist()[0])  # top1, top5, meanrank
-        avg_acc = np.mean([users_rnn_acc[x][0] for x in users_rnn_acc])  # overall average accuracy
+            distance_err = users_acc[u][4] / users_acc[u][0]  # user u's distance error
+            users_rnn_acc[u] = (top1_acc.tolist()[0], top5_acc.tolist()[0], distance_err.tolist()[0])  # top1, top5
+        avg_acc = np.mean([users_rnn_acc[x][0] for x in users_rnn_acc])  # average top1 accuracy
         return avg_loss, avg_acc, users_rnn_acc
 
 

@@ -38,7 +38,7 @@ def load_venues_from_tweets(path, header):
     return poi
 
 
-GRID_COUNT = 100
+GRID_COUNT = 500
 def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon], y: [lat]. 100 by 100
     dXMax, dXMin, dYMax, dYMin = max(x), min(x), max(y), min(y)
     # print dXMax, dXMin, dYMax, dYMin
@@ -108,7 +108,7 @@ class DataTaxi(object):
         _raw_x = [i[0] for i in _raw_xy]
         _raw_y = [i[1] for i in _raw_xy]
         _raw_pid = [self.pois[k] for k in _raw_xy]
-        self.grids, center_location_list = geo_grade(_raw_pid, _raw_x, _raw_y)  # key: raw pid, val: grid id
+        self.grids, self.center_location_list = geo_grade(_raw_pid, _raw_x, _raw_y)  # key: raw pid, val: grid id
         self.words_original = []
         self.words_lens = []
         self.dictionary = dict()
@@ -122,10 +122,6 @@ class DataTaxi(object):
         self.index_lookup = {}  # key: raw uid, val: dict(sid: [record index])
         self.pid_loc_lat = {}
         self.data_neural = {}
-
-        # dataset = {'grid_dictionary': self.vid_lookup, 'center_location_list': center_location_list}
-        # pickle.dump(dataset, open(self.save_name + '_dictionary' + '.pk', 'wb'))
-        # sys.exit()
 
 
     # ############# 1. read trajectory data from twitters
@@ -369,7 +365,14 @@ class DataTaxi(object):
                               'parameters': self.get_parameters(), 'data_filter': self.data_filter,
                               'vid_lookup': self.vid_lookup, 'index_lookup': self.index_lookup}
                             #   'vid_lookup': self.vid_lookup}
-        pickle.dump(taxi_dataset, open(self.SAVE_PATH + self.save_name + '_gap10.pk', 'wb'))
+        pickle.dump(taxi_dataset, open(self.SAVE_PATH + self.save_name + '_grid500.pk', 'wb'))
+
+        grid_lookup = {}
+        for g in self.vid_lookup.keys():  # filtered grid id
+            raw_g = self.vid_list_lookup[g]
+            grid_lookup[g] = self.center_location_list[raw_g]
+        dataset = {'grid_dictionary': grid_lookup, 'center_location_list': self.center_location_list}
+        pickle.dump(dataset, open(self.save_name + '_dictionary' + '.pk', 'wb'))
 
 
 def parse_args():
@@ -379,8 +382,7 @@ def parse_args():
     parser.add_argument('--global_visit', type=int, default=10, help="location global visit threshold")
     # parser.add_argument('--hour_gap', type=int, default=72, help="maximum interval of two trajectory points")
     parser.add_argument('--min_gap', type=int, default=4, help="minimum interval of two trajectory points")
-    parser.add_argument('--minute_gap', type=int, default=10, help="maximum interval of two trajectory points")
-    # parser.add_argument('--minute_gap', type=int, default=5, help="maximum interval of two trajectory points")
+    parser.add_argument('--minute_gap', type=int, default=5, help="maximum interval of two trajectory points")
     parser.add_argument('--session_max', type=int, default=10, help="control the length of session not too long")
     parser.add_argument('--session_min', type=int, default=5, help="control the length of session not too short")
     parser.add_argument('--sessions_min', type=int, default=5, help="the minimum amount of the good user's sessions")

@@ -133,15 +133,15 @@ def run(args):
             metrics['train_loss'].append(avg_loss)
 
         # validation
-        avg_loss, avg_acc, users_acc = run_simple(data_valid, valid_idx, 'test', lr, parameters.clip, model,
-                                                optimizer, criterion, parameters.model_mode,
+        # avg_loss, avg_acc, users_acc = run_simple(data_valid, valid_idx, 'test', lr, parameters.clip, model,
+                                                # optimizer, criterion, parameters.model_mode,
                                                 #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mapping
-                                                grid=parameters.grid_lookup)
-        logger.info('==>Validation Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
+                                                # grid=parameters.grid_lookup)
+        # logger.info('==>Validation Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
 
-        metrics['valid_loss'].append(avg_loss)
-        metrics['accuracy'].append(avg_acc)
-        metrics['valid_acc'][epoch] = users_acc
+        # metrics['valid_loss'].append(avg_loss)
+        # metrics['accuracy'].append(avg_acc)
+        # metrics['valid_acc'][epoch] = users_acc
 
         save_name_tmp = 'ep_' + str(epoch) + '.m'
         torch.save(model.state_dict(), SAVE_PATH + tmp_path + save_name_tmp)
@@ -150,32 +150,35 @@ def run(args):
         lr_last = lr
         lr = optimizer.param_groups[0]['lr']
         if lr_last > lr:
-            load_epoch = np.argmax(metrics['accuracy'])
-            load_name_tmp = 'ep_' + str(load_epoch) + '.m'
-            model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
-            logger.info('load epoch={} model state'.format(load_epoch))
+            logger.info('lr_last > lr ... visit main.py line 152')
+        #     load_epoch = np.argmax(metrics['accuracy'])
+        #     load_name_tmp = 'ep_' + str(load_epoch) + '.m'
+        #     model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
+        #     logger.info('load epoch={} model state'.format(load_epoch))
         if epoch == 0:
             logger.info('single epoch time cost:{}'.format(time.time() - st))
         if lr <= 0.9 * 1e-5:
             break
-        if args.pretrain == 1:
-            break
 
-    mid = np.argmax(metrics['accuracy'])
-    avg_acc = metrics['accuracy'][mid]
-    load_name_tmp = 'ep_' + str(mid) + '.m'
-    model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
+    # mid = np.argmax(metrics['accuracy'])
+    # avg_acc = metrics['accuracy'][mid]
+    # load_name_tmp = 'ep_' + str(mid) + '.m'
+    # model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
     # test
     logger.info('*' * 15 + 'start testing' + '*' * 15)
     avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
                                               optimizer, criterion, parameters.model_mode,
                                             #   grid_eval=True,  # accuracy eval시에만 grid mapping
                                               grid=parameters.grid_lookup)
-    logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Mean Rank:{:.4f} Loss:{:.4f}'.format(
+    logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Avg Distance Err:{:.4f} Loss:{:.4f}'.format(
                 avg_acc, 
                 np.mean([users_acc[x][1] for x in users_acc]),
                 np.mean([users_acc[x][2] for x in users_acc]),
                 avg_loss))
+
+    metrics['valid_loss'].append(avg_loss)
+    metrics['accuracy'].append(avg_acc)
+    metrics['valid_acc'][epoch] = users_acc
 
     save_name = 'res'
     json.dump({'args': argv, 'metrics': metrics}, fp=open(SAVE_PATH + save_name + '.rs', 'w'), indent=4)
