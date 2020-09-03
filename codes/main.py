@@ -43,7 +43,6 @@ def run(args):
             'lr_step': args.lr_step, 'lr_decay': args.lr_decay, 'L2': args.L2, 'act_type': 'selu',
             'optim': args.optim, 'attn_type': args.attn_type, 'clip': args.clip, 'rnn_type': args.rnn_type,
             'epoch_max': args.epoch_max, 'history_mode': args.history_mode, 'model_mode': args.model_mode}
-    logger.info('*' * 15 + 'start training' + '*' * 15)
     logger.info('model_mode:{} history_mode:{} users:{}'.format(
         parameters.model_mode, parameters.history_mode, parameters.uid_size))
 
@@ -82,6 +81,7 @@ def run(args):
     # avg_acc_markov, users_acc_markov = markov(parameters, candidate)
     # metrics['markov_acc'] = users_acc_markov
 
+    st = time.time()
     if 'long' in parameters.model_mode:
         long_history = True
     else:
@@ -111,6 +111,7 @@ def run(args):
     # logger.info('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                     #    len([y for x in train_idx for y in train_idx[x]]),
                                                     #    len([y for x in test_idx for y in test_idx[x]])))
+    logger.info('*' * 15 + 'generated input: {}'.format(time.time() - st) + '*' * 15)
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
     if not os.path.exists(SAVE_PATH + tmp_path):  # create checkpoint
@@ -122,15 +123,16 @@ def run(args):
         logger.info('*' * 15 + 'loaded checkpoint' + '*' * 15)
 
     # writer = SummaryWriter(args.data_name)
+    logger.info('*' * 15 + 'start training' + '*' * 15)
     for epoch in range(parameters.epoch):
         if args.pretrain == 1:
             break
         st = time.time()
-        if args.pretrain == 0:
-            model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
+        # if args.pretrain == 0:
+        model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
                                         criterion, parameters.model_mode)
-            logger.info('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
-            metrics['train_loss'].append(avg_loss)
+        logger.info('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{} time:{}'.format(epoch, avg_loss, lr, time.time()-st))
+        metrics['train_loss'].append(avg_loss)
 
         # validation
         # avg_loss, avg_acc, users_acc = run_simple(data_valid, valid_idx, 'test', lr, parameters.clip, model,

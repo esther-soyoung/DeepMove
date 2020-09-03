@@ -517,7 +517,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         optimizer.zero_grad()
         u, i = run_queue.popleft()  # uid, train|test sid
         if u not in users_acc:
-            users_acc[u] = [0, 0, 0, 0, 0]  # [total # of target records, top1, top5, top10, distance_error]
+            users_acc[u] = [0, 0, 0, 0]  # [total # of target records, top1, top5, top10]
         loc = data[u][i]['loc'].cuda()  # cumulative loc up to session_i[-1]
         tim = data[u][i]['tim'].cuda()  # cumulative tim up to session_i[-1]
         target = data[u][i]['target'].cuda()  # [vid], answer vid of session_i[1:]
@@ -560,7 +560,6 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             users_acc[u][1] += acc[2]  # top1
             users_acc[u][2] += acc[1]  # top5
             users_acc[u][3] += acc[0]  # top10
-            users_acc[u][4] += acc[3]  # distance error
         total_loss.append(loss.data.cpu().numpy()[0])
 
     avg_loss = np.mean(total_loss, dtype=np.float64)
@@ -571,8 +570,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         for u in users_acc:
             top1_acc = users_acc[u][1] / users_acc[u][0]  # user u's top1 accuracy
             top5_acc = users_acc[u][2] / users_acc[u][0]  # user u's top5 accuracy
-            # distance_err = users_acc[u][4] / users_acc[u][0]  # user u's distance error
-            users_rnn_acc[u] = (top1_acc.tolist()[0], top5_acc.tolist()[0]) #, distance_err.tolist()[0])  # top1, top5
+            users_rnn_acc[u] = (top1_acc.tolist()[0], top5_acc.tolist()[0])  # top1, top5
         avg_acc = np.mean([users_rnn_acc[x][0] for x in users_rnn_acc])  # average top1 accuracy
         return avg_loss, avg_acc, users_rnn_acc
 
