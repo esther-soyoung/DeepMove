@@ -6,12 +6,15 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+import sys
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 import json
 import time
 import argparse
 import numpy as np
 from json import encoder
+import logging
 
 encoder.FLOAT_REPR = lambda o: format(o, '.3f')
 
@@ -29,14 +32,17 @@ def run(args):
                                   optim=args.optim, attn_type=args.attn_type,
                                   clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
                                   model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)
+    logger.info('*' * 15 + 'loaded parameters' + '*' * 15)
+    # parameters.write_tsv()
+    # sys.exit()
+
     argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
             'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
             'dropout_p': args.dropout_p, 'data_name': args.data_name, 'learning_rate': args.learning_rate,
             'lr_step': args.lr_step, 'lr_decay': args.lr_decay, 'L2': args.L2, 'act_type': 'selu',
             'optim': args.optim, 'attn_type': args.attn_type, 'clip': args.clip, 'rnn_type': args.rnn_type,
             'epoch_max': args.epoch_max, 'history_mode': args.history_mode, 'model_mode': args.model_mode}
-    print('*' * 15 + 'start training' + '*' * 15)
-    print('model_mode:{} history_mode:{} users:{}'.format(
+    logger.info('model_mode:{} history_mode:{} users:{}'.format(
         parameters.model_mode, parameters.history_mode, parameters.uid_size))
 
     if parameters.model_mode in ['simple', 'simple_long']:
@@ -68,6 +74,7 @@ def run(args):
     avg_acc_markov, users_acc_markov = markov(parameters, candidate)
     metrics['markov_acc'] = users_acc_markov
 
+    st = time.time()
     if 'long' in parameters.model_mode:
         long_history = True
     else:
@@ -86,23 +93,32 @@ def run(args):
             data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
             data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate)
 
-    print('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
+    logger.info('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
                                                        len([y for x in train_idx for y in train_idx[x]]),
                                                        len([y for x in test_idx for y in test_idx[x]])))
+    logger.info('*' * 15 + 'generated input: {}'.format(time.time() - st) + '*' * 15)
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
-    os.mkdir(SAVE_PATH + tmp_path)
+    if not os.path.exists(SAVE_PATH + tmp_path):  # create checkpoint
+        os.makedirs(SAVE_PATH + tmp_path)
+
+    logger.info('*' * 15 + 'start training' + '*' * 15)
     for epoch in range(parameters.epoch):
         st = time.time()
         if args.pretrain == 0:
             model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
                                          criterion, parameters.model_mode)
-            print('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
+            logger.info('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{}'.format(epoch, avg_loss, lr))
             metrics['train_loss'].append(avg_loss)
 
         avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
-                                                  optimizer, criterion, parameters.model_mode)
-        print('==>Test Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
+                                                  optimizer, criterion, parameters.model_mode,
+                                                  grid=parameters.grid_lookup)  # grid evaluation
+        logger.info('==>Valid Top1 Acc:{:.4f} Top5 Acc:{:.4f} Top10 Acc:{:.4f} Loss:{:.4f}'.format(
+                    avg_acc, 
+                    np.mean([users_acc[x][1] for x in users_acc]),
+                    np.mean([users_acc[x][2] for x in users_acc]),
+                    avg_loss))
 
         metrics['valid_loss'].append(avg_loss)
         metrics['accuracy'].append(avg_acc)
@@ -118,9 +134,9 @@ def run(args):
             load_epoch = np.argmax(metrics['accuracy'])
             load_name_tmp = 'ep_' + str(load_epoch) + '.m'
             model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
-            print('load epoch={} model state'.format(load_epoch))
+            logger.info('load epoch={} model state'.format(load_epoch))
         if epoch == 0:
-            print('single epoch time cost:{}'.format(time.time() - st))
+            logger.info('single epoch time cost:{}'.format(time.time() - st))
         if lr <= 0.9 * 1e-5:
             break
         if args.pretrain == 1:
@@ -138,6 +154,7 @@ def run(args):
     json.dump({'args': argv, 'metrics': metrics_view}, fp=open(SAVE_PATH + save_name + '.txt', 'w'), indent=4)
     torch.save(model.state_dict(), SAVE_PATH + save_name + '.m')
 
+    # remove checkpoint/
     for rt, dirs, files in os.walk(SAVE_PATH + tmp_path):
         for name in files:
             remove_path = os.path.join(rt, name)
@@ -151,6 +168,32 @@ def load_pretrained_model(config):
     res = json.load(open("../pretrain/" + config.model_mode + "/res.txt"))
     args = Settings(config, res["args"])
     return args
+
+def get_logger(logpath, filepath, package_files=[], displaying=True, saving=True, debug=False):
+    logger = logging.getLogger()
+    if debug:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+    logger.setLevel(level)
+    if saving:
+        info_file_handler = logging.FileHandler(logpath, mode="a")
+        info_file_handler.setLevel(level)
+        logger.addHandler(info_file_handler)
+    if displaying:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(level)
+        logger.addHandler(console_handler)
+    logger.info(filepath)
+    with open(filepath, "r") as f:
+        logger.info(f.read())
+
+    for f in package_files:
+        logger.info(f)
+        with open(f, "r") as package_f:
+            logger.info(package_f.read())
+
+    return logger
 
 
 class Settings(object):
@@ -181,7 +224,6 @@ class Settings(object):
 if __name__ == '__main__':
     np.random.seed(1)
     torch.manual_seed(1)
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--loc_emb_size', type=int, default=500, help="location embeddings size")
@@ -207,7 +249,12 @@ if __name__ == '__main__':
                         choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
     parser.add_argument('--pretrain', type=int, default=1)
     args = parser.parse_args()
+    if not os.path.exists(args.save_path):
+        os.makedirs(args.save_path)
     if args.pretrain == 1:
         args = load_pretrained_model(args)
+
+    logger = get_logger(logpath=os.path.join(args.save_path, 'logs'), filepath=os.path.abspath(__file__))
+    logger.info(args)
 
     ours_acc = run(args)

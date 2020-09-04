@@ -5,9 +5,48 @@ from __future__ import division
 import torch
 from torch.autograd import Variable
 
+import sys
 import numpy as np
 import cPickle as pickle
-from collections import deque, Counter
+from collections import deque, Counter, defaultdict
+
+GRID_COUNT = 100
+def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon], y: [lat]. 100 by 100
+    dXMax, dXMin, dYMax, dYMin = max(x), min(x), max(y), min(y)
+    # print dXMax, dXMin, dYMax, dYMin
+    m_dOriginX = dXMin
+    m_dOriginY = dYMin
+    dSizeX = (dXMax - dXMin) / m_nGridCount
+    dSizeY = (dYMax - dYMin) / m_nGridCount
+    m_vIndexCells = []  # list of lists
+    center_location_list = []
+    for i in range(0, m_nGridCount * m_nGridCount + 1):
+        m_vIndexCells.append([])
+        y_ind = int(i / m_nGridCount)
+        x_ind = i - y_ind * m_nGridCount
+        center_location_list.append((dXMin + x_ind * dSizeX + 0.5 * dSizeX, dYMin + y_ind * dSizeY + 0.5 * dSizeY))
+    # print (m_nGridCount, m_dOriginX, m_dOriginY, \
+    #        dSizeX, dSizeY, len(m_vIndexCells), len(index))
+    poi_index_dict = {}
+    _poi_index_dict = defaultdict(list)
+    for i in range(len(x)):
+        nXCol = int((x[i] - m_dOriginX) / dSizeX)
+        nYCol = int((y[i] - m_dOriginY) / dSizeY)
+        if nXCol >= m_nGridCount:
+            # print 'max X'
+            nXCol = m_nGridCount - 1
+
+        if nYCol >= m_nGridCount:
+            # print 'max Y'
+            nYCol = m_nGridCount - 1
+
+        iIndex = nYCol * m_nGridCount + nXCol
+        poi_index_dict[index[i]] = iIndex  # key: raw poi, val: grid id
+        _poi_index_dict[iIndex].append(index[i])  # key: grid id, val: raw pid
+        m_vIndexCells[iIndex].append([index[i], x[i], y[i]])
+
+    return poi_index_dict, center_location_list
+    # return poi_index_dict, _poi_index_dict
 
 
 class RnnParameterData(object):
@@ -22,6 +61,26 @@ class RnnParameterData(object):
         self.vid_list = data['vid_list']
         self.uid_list = data['uid_list']
         self.data_neural = data['data_neural']
+        self.data_filter = data['data_filter']  # key: raw uid, val: {sessions: {sid: [[raw pid, raw tim], ...]}, ...}
+        self.vid_lookup = data['vid_lookup']  # key: int vid, val: [float(lon), float(lat)]
+        self.uid_lookup = {}  # key: int uid, val: raw uid
+        for k, v in self.uid_list.items():
+            self.uid_lookup[v[0]] = k
+        self.raw_pid = [p for p in self.vid_list.keys() if p != 'unk']  # list of raw pois
+        self._int_vid = [self.vid_list[p][0] for p in self.raw_pid]  # list of int vids
+        self._raw_xy = [self.vid_lookup[i] for i in self._int_vid]
+        self.raw_x = [i[0] for i in self._raw_xy]
+        self.raw_y = [i[1] for i in self._raw_xy]
+        self._raw_grid_lookup, self.center_location_list = geo_grade(self.raw_pid, self.raw_x, self.raw_y)  # key: raw pid, val: grid id
+        self.grid_lookup = {}  # key: int vid, val: grid id
+        for k, v in self.vid_list.items():
+            if k == 'unk':
+                continue
+            self.grid_lookup[v[0]] = self._raw_grid_lookup[k]
+
+        # dataset = {'pid_index_dict': self.grid_lookup, 'center_location_list': self.center_location_list,
+                    # 'pid_dictionary': self.vid_lookup}
+        # pickle.dump(dataset, open(self.data_name + '_dictionary' + '.pk', 'wb'))
 
         self.tim_size = 48
         self.loc_size = len(self.vid_list)
@@ -47,6 +106,45 @@ class RnnParameterData(object):
         self.history_mode = history_mode
         self.model_mode = model_mode
 
+    def write_tsv(self):
+        # raw train/valid/test data
+        raw_train = defaultdict(list) # key: uid, val: list([tim, [lon, lat], int pid, grid id])
+        raw_test = defaultdict(list)
+        for u in self.data_filter.keys():  # raw uid
+            data = self.data_neural[self.uid_list[u][0]]   # {sid: [[int pid, int tid]]}
+            for sid in data['train']:  # list of train sessions
+                session = self.data_filter[u]['sessions'][sid]  # [[raw pid, raw tim]]
+                for i in range(len(session)):
+                    record = session[i]
+                    raw_poi = record[0]
+                    int_pid = self.vid_list[raw_poi][0]
+                    grid_id = self.grid_lookup[int_pid]
+                    raw_train[u].append([record[1], self.vid_lookup[int_pid], int_pid, grid_id])
+            for sid in data['test']:  # list of test sessions
+                session = self.data_filter[u]['sessions'][sid]  # [[raw pid, raw tim]]
+                for i in range(len(session)):
+                    record = session[i]
+                    raw_poi = record[0]
+                    int_pid = self.vid_list[raw_poi][0]
+                    grid_id = self.grid_lookup[int_pid]
+                    raw_test[u].append([record[1], self.vid_lookup[int_pid], int_pid, grid_id])
+        # write on files
+        w_train = open(self.data_name + '_train.tsv', 'w')
+        l = '\t'.join(['uid', 'tim', 'lon', 'lat', 'filtered_pid', 'grid_id'])
+        w_train.write(l + '\n')
+        for key, val in raw_train.items():  # key: uid, val: list([time, [lon, lat], int pid, grid_id])
+            for v in val:  # list([tim, [lon, lat], pid, grid_id])
+                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3])])
+                w_train.write(l + '\n')
+        w_train.close()
+        w_test = open(self.data_name + '_test.tsv', 'w')
+        l = '\t'.join(['uid', 'tim', 'lon', 'lat', 'filtered_pid', 'grid_id'])
+        w_test.write(l + '\n')
+        for key, val in raw_test.items():  # key: uid, val: list([time, [lon, lat], int pid, grid_id])
+            for v in val:  # list([tim, [lon, lat], pid, grid_id])
+                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3])])
+                w_test.write(l + '\n')
+        w_test.close()
 
 def generate_input_history(data_neural, mode, mode2=None, candidate=None):
     data_train = {}
@@ -242,7 +340,7 @@ def generate_queue(train_idx, mode, mode2):
     return train_queue
 
 
-def get_acc(target, scores):
+def get_acc(target, scores, grid=None):
     """target and scores are torch cuda Variable"""
     target = target.data.cpu().numpy()
     val, idxx = scores.data.topk(10, 1)
@@ -250,6 +348,9 @@ def get_acc(target, scores):
     acc = np.zeros((3, 1))
     for i, p in enumerate(predx):
         t = target[i]
+        if grid:  # grid evaluation mode
+            t = grid[t]
+            p = [grid[i] for i in p]
         if t in p[:10] and t > 0:
             acc[0] += 1
         if t in p[:5] and t > 0:
@@ -282,7 +383,7 @@ def get_hint(target, scores, users_visited):
     return hint, count
 
 
-def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None):
+def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2=None, grid=None):
     """mode=train: return model, avg_loss
        mode=test: return avg_loss,avg_acc,users_rnn_acc"""
     run_queue = None
@@ -300,7 +401,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         optimizer.zero_grad()
         u, i = run_queue.popleft()
         if u not in users_acc:
-            users_acc[u] = [0, 0]
+            users_acc[u] = [0, 0, 0, 0]  # len(target), top1, top5, top10
         loc = data[u][i]['loc'].cuda()
         tim = data[u][i]['tim'].cuda()
         target = data[u][i]['target'].cuda()
@@ -319,6 +420,7 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         elif mode2 == 'attn_local_long':
             target_len = target.data.size()[0]
             scores = model(loc, tim, target_len)
+            print('model prediction completed')
 
         if scores.data.size()[0] > target.data.size()[0]:
             scores = scores[-target.data.size()[0]:]
@@ -334,11 +436,16 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
                         p.data.add_(-lr, p.grad.data)
             except:
                 pass
-            optimizer.step()
+            optimizer.step()            
+            print('backward completed')
         elif mode == 'test':
             users_acc[u][0] += len(target)
             acc = get_acc(target, scores)
-            users_acc[u][1] += acc[2]
+            if grid is not None:
+                acc = get_acc(target, scores, grid=grid)
+            users_acc[u][1] += acc[2]  # top1
+            users_acc[u][2] += acc[1]  # top5
+            users_acc[u][3] += acc[0]  # top10
         total_loss.append(loss.data.cpu().numpy()[0])
 
     avg_loss = np.mean(total_loss, dtype=np.float64)
@@ -347,9 +454,11 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     elif mode == 'test':
         users_rnn_acc = {}
         for u in users_acc:
-            tmp_acc = users_acc[u][1] / users_acc[u][0]
-            users_rnn_acc[u] = tmp_acc.tolist()[0]
-        avg_acc = np.mean([users_rnn_acc[x] for x in users_rnn_acc])
+            top1_acc = users_acc[u][1] / users_acc[u][0]
+            top5_acc = users_acc[u][2] / users_acc[u][0]  # user u's top5 accurac
+            top10_acc = users_acc[u][3] / users_acc[u][0]  # user u's top5 accurac
+            users_rnn_acc[u] = (top1_acc.tolist()[0],top5_acc.tolist()[0],top10_acc.tolist()[0])
+        avg_acc = np.mean([users_rnn_acc[x][0] for x in users_rnn_acc])
         return avg_loss, avg_acc, users_rnn_acc
 
 
