@@ -112,7 +112,7 @@ def run(args):
             metrics['train_loss'].append(avg_loss)
 
         avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
-                                                  optimizer, criterion, parameters.model_mode),
+                                                  optimizer, criterion, parameters.model_mode,
                                                   grid=parameters.grid_lookup)  # grid evaluation
         logger.info('==>Valid Top1 Acc:{:.4f} Top5 Acc:{:.4f} Top10 Acc:{:.4f} Loss:{:.4f}'.format(
                     avg_acc, 
