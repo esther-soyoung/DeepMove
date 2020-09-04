@@ -34,8 +34,8 @@ def run(args):
                                   clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
                                   model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)
     logger.info('*' * 15 + 'loaded parameters' + '*' * 15)
-    parameters.write_tsv()
-    sys.exit()
+    # parameters.write_tsv()
+    # sys.exit()
 
     argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
             'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
