@@ -34,8 +34,8 @@ def run(args):
                                   clip=args.clip, epoch_max=args.epoch_max, history_mode=args.history_mode,
                                   model_mode=args.model_mode, data_path=args.data_path, save_path=args.save_path)
     logger.info('*' * 15 + 'loaded parameters' + '*' * 15)
-    # parameters.write_tsv()
-    # sys.exit()
+    parameters.write_tsv()
+    sys.exit()
 
     argv = {'loc_emb_size': args.loc_emb_size, 'uid_emb_size': args.uid_emb_size, 'voc_emb_size': args.voc_emb_size,
             'tim_emb_size': args.tim_emb_size, 'hidden_size': args.hidden_size,
@@ -116,7 +116,7 @@ def run(args):
     tmp_path = 'checkpoint/'
     if not os.path.exists(SAVE_PATH + tmp_path):  # create checkpoint
         os.makedirs(SAVE_PATH + tmp_path)
-    else:  # load checkpoint
+    elif args.load_checkpoint is not None:  # load checkpoint
         load_epoch = args.load_checkpoint
         load_name_tmp = 'ep_' + str(load_epoch) + '.m'
         model.load_state_dict(torch.load(SAVE_PATH + load_name_tmp))
@@ -125,14 +125,12 @@ def run(args):
     # writer = SummaryWriter(args.data_name)
     logger.info('*' * 15 + 'start training' + '*' * 15)
     for epoch in range(parameters.epoch):
-        if args.pretrain == 1:
-            break
         st = time.time()
-        # if args.pretrain == 0:
-        model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
+        if args.pretrain == 0:
+            model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
                                         criterion, parameters.model_mode)
-        logger.info('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{} time:{}'.format(epoch, avg_loss, lr, time.time()-st))
-        metrics['train_loss'].append(avg_loss)
+            logger.info('==>Train Epoch:{:0>2d} Loss:{:.4f} lr:{} time:{}'.format(epoch, avg_loss, lr, time.time()-st))
+            metrics['train_loss'].append(avg_loss)
 
         # validation
         # avg_loss, avg_acc, users_acc = run_simple(data_valid, valid_idx, 'test', lr, parameters.clip, model,
@@ -161,6 +159,8 @@ def run(args):
             logger.info('single epoch time cost:{}'.format(time.time() - st))
         if lr <= 0.9 * 1e-5:
             break
+        if args.pretrain == 1:
+            break
 
     # mid = np.argmax(metrics['accuracy'])
     # avg_acc = metrics['accuracy'][mid]
@@ -176,9 +176,10 @@ def run(args):
                                               grid_eval=grid_eval,  # accuracy eval시에만 grid mapping
                                               grid=parameters.grid_lookup,
                                               center=parameters.center_location_list)
-    logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Loss:{:.4f}'.format(
+    logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Top10 Acc:{:.4f} Loss:{:.4f}'.format(
                 avg_acc, 
                 np.mean([users_acc[x][1] for x in users_acc]),
+                np.mean([users_acc[x][2] for x in users_acc]),
                 avg_loss))
 
     metrics['valid_loss'].append(avg_loss)

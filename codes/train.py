@@ -79,7 +79,6 @@ class RnnParameterData(object):
             if k == 'unk':
                 continue
             self.grid_lookup[v[0]] = self._raw_grid_lookup[k]
-        self.index_lookup = data['index_lookup']  # key: raw uid, val: dict(sid: [record indices])
 
         # dataset = {'pid_index_dict': self.grid_lookup, 'center_location_list': center_location_list,
                     # 'pid_dictionary': self.vid_lookup}
@@ -112,72 +111,66 @@ class RnnParameterData(object):
 
     def write_tsv(self):
         # raw train/valid/test data
-        raw_train = defaultdict(list) # key: uid, val: list([record_index, [lon, lat], tim])
+        raw_train = defaultdict(list) # key: uid, val: list([[lon, lat], tim])
         raw_valid = defaultdict(list)
         raw_test = defaultdict(list)
         for u in self.data_filter.keys():  # raw uid
-            data = self.data_neural[self.uid_list[u][0]]   # {sid: [[int pid, int tid]]}
+            data = self.data_neural[self.uid_list[u][0]]   # data = {sid: [[int pid, int tid]]}
             for sid in data['train']:  # list of train sessions
-                r_idx = self.index_lookup[u][sid]  # corresponding record indices
                 session = self.data_filter[u]['sessions'][sid]  # [[raw pid, raw tim]]
-                assert len(r_idx) == len(session)
-                for i in range(len(r_idx)):
+                for i in range(len(session)):
                     record = session[i]
                     raw_poi = record[0]
                     int_pid = self.vid_list[raw_poi][0]
                     # grid_id = self.grid_lookup[int_pid]
-                    raw_train[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], int_pid])
-                    # raw_train[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], raw_poi, int_pid, grid_id])
+                    raw_train[u].append([self.vid_lookup[int_pid], record[1], int_pid])
+                    # raw_train[u].append([self.vid_lookup[int_pid], record[1], int_pid, grid_id])
             for sid in data['test']:  # list of test sessions
-                r_idx = self.index_lookup[u][sid]  # corresponding record indices
                 session = self.data_filter[u]['sessions'][sid]  # [[raw pid, raw tim]]
-                assert len(r_idx) == len(session)
-                for i in range(len(r_idx)):
+                for i in range(len(session)):
                     record = session[i]
                     raw_poi = record[0]
                     int_pid = self.vid_list[raw_poi][0]
                     # grid_id = self.grid_lookup[int_pid]
-                    raw_test[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], int_pid])
-                    # raw_test[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], raw_poi, int_pid, grid_id])
+                    raw_test[u].append([self.vid_lookup[int_pid], record[1], int_pid])
+                    # raw_test[u].append([self.vid_lookup[int_pid], record[1], int_pid, grid_id])
             for sid in data['valid']:  # list of test sessions
-                r_idx = self.index_lookup[u][sid]  # corresponding record indices
                 session = self.data_filter[u]['sessions'][sid]  # [[raw pid, raw tim]]
-                assert len(r_idx) == len(session)
-                for i in range(len(r_idx)):
+                for i in range(len(session)):
                     record = session[i]
                     raw_poi = record[0]
                     int_pid = self.vid_list[raw_poi][0]
                     # grid_id = self.grid_lookup[int_pid]
-                    raw_valid[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], int_pid])
-                    # raw_valid[u].append([r_idx[i], self.vid_lookup[int_pid], record[1], raw_poi, int_pid, grid_id])
+                    raw_valid[u].append([self.vid_lookup[int_pid], record[1], int_pid])
+                    # raw_valid[u].append([self.vid_lookup[int_pid], record[1], int_pid, grid_id])
 
         # write on files
         w_train = open(self.data_name + '_train.tsv', 'w')
-        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'filtered_grid'])
-        # l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'raw_poi', 'filtered_pid', 'grid_id'])
+        l = '\t'.join(['uid', 'lon', 'lat', 'tim', 'filtered_grid'])
+        # l = '\t'.join(['uid', 'lon', 'lat', 'tim', 'filtered_pid', 'grid_id'])
         w_train.write(l + '\n')
-        for key, val in raw_train.items():  # key: uid, val: list([record_index, [lon, lat], tim, raw poi, int pid, grid_id])
-            for v in val:  # list([record_index, [lon, lat], tim])
-                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3])])
+        for key, val in raw_train.items():  # key: uid, val: list([[lon, lat], tim, int pid, grid_id])
+            for v in val:  # list([[lon, lat], tim])
+                l = '\t'.join([str(key), str(v[0][0]), str(v[0][1]), str(v[1]), str(v[2])])
                 # l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3]), str(v[4]), str(v[5])])
                 w_train.write(l + '\n')
         w_test = open(self.data_name + '_test.tsv', 'w')
-        # l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'raw_poi', 'filtered_pid', 'grid_id'])
-        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'filtered_grid'])
+        # l = '\t'.join(['uid', 'lon', 'lat', 'tim', 'filtered_pid', 'grid_id'])
+        l = '\t'.join(['uid', 'lon', 'lat', 'tim', 'filtered_grid'])
         w_test.write(l + '\n')
-        for key, val in raw_test.items():  # key: uid, val: list([record_index, [lon, lat], tim, raw poi, int pid, grid_id])
-            for v in val:  # [r_idx, [lon, lat], tim]
+        for key, val in raw_test.items():  # key: uid, val: list([[lon, lat], tim, int pid, grid_id])
+            for v in val:  # [[lon, lat], tim]
                 # l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3]), str(v[4]), str(v[5])])
-                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3])])
+                l = '\t'.join([str(key), str(v[0][0]), str(v[0][1]), str(v[1]), str(v[2])])
                 w_test.write(l + '\n')
         w_valid = open(self.data_name + '_valid.tsv', 'w')
-        # l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'raw_poi', 'filtered_pid', 'grid_id'])
-        l = '\t'.join(['uid', 'raw_log_index', 'lon', 'lat', 'tim', 'filtered_grid'])
+        # l = '\t'.join(['uid', 'lon', 'lat', 'tim', 'filtered_pid', 'grid_id'])
+        l = '\t'.join(['uid', 'lon', 'lat', 'tim', 'filtered_grid'])
         w_valid.write(l + '\n')
-        for key, val in raw_valid.items():  # key: uid, val: list([record_index, [lon, lat], tim, raw poi, int pid, grid_id])
-            for v in val:  # [r_idx, [lon, lat], tim]
+        for key, val in raw_valid.items():  # key: uid, val: list([[lon, lat], tim, int pid, grid_id])
+            for v in val:  # [[lon, lat], tim]
                 # l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3]), str(v[4]), str(v[5])])
-                l = '\t'.join([str(key), str(v[0]), str(v[1][0]), str(v[1][1]), str(v[2]), str(v[3])])
+                l = '\t'.join([str(key), str(v[0][0]), str(v[0][1]), str(v[1]), str(v[2])])
                 w_valid.write(l + '\n')
         w_train.close()
         w_test.close()
@@ -445,7 +438,7 @@ def haversine(lon1, lat1, lon2, lat2):
     r = 6371
     return c * r * 1000
 
-def get_acc(target, scores, grid=None, center_location_list=None):
+def get_acc(target, scores, grid=None):
     """target and scores are torch cuda Variable"""
     target = target.data.cpu().numpy()
     val, idxx = scores.data.topk(10, 1)  # top 10 predictions
@@ -462,11 +455,6 @@ def get_acc(target, scores, grid=None, center_location_list=None):
             acc[1] += 1  # top5
         if t == p[0] and t > 0:
             acc[2] += 1  # top1
-        # if center_location_list:
-            # distance error
-            # d = distance.euclidean(center_location_list[t], center_location_list[p[0]])
-            # d = haversine(center_location_list[t][0], center_location_list[t][1], center_location_list[p[0]][0], center_location_list[p[0]][1])
-            # acc[3] += d
     return acc
 
 
@@ -511,7 +499,6 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         run_queue = generate_queue(run_idx, 'normal', 'test')  # test sid
     total_loss = []
     queue_len = len(run_queue)
-    print('generate_queue completed')
 
     users_acc = {}
     for c in range(queue_len):
@@ -537,7 +524,6 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         elif mode2 == 'attn_local_long':
             target_len = target.data.size()[0]
             scores = model(loc, tim, target_len)
-            print('model prediction completed')
 
         if scores.data.size()[0] > target.data.size()[0]:
             scores = scores[-target.data.size()[0]:]
@@ -554,12 +540,11 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             except:
                 pass
             optimizer.step()
-            print('backward completed')
         elif mode == 'test':
             users_acc[u][0] += len(target)
             acc= get_acc(target, scores)
             if grid_eval:
-                acc = get_acc(target, scores, grid=grid, center_location_list=center)
+                acc = get_acc(target, scores, grid=grid)
             users_acc[u][1] += acc[2]  # top1
             users_acc[u][2] += acc[1]  # top5
             users_acc[u][3] += acc[0]  # top10
@@ -573,7 +558,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
         for u in users_acc:
             top1_acc = users_acc[u][1] / users_acc[u][0]  # user u's top1 accuracy
             top5_acc = users_acc[u][2] / users_acc[u][0]  # user u's top5 accuracy
-            users_rnn_acc[u] = (top1_acc.tolist()[0], top5_acc.tolist()[0])  # top1, top5
+            top10_acc = users_acc[u][3] / users_acc[u][0]  # user u's top10 accuracy
+            users_rnn_acc[u] = (top1_acc.tolist()[0], top5_acc.tolist()[0], top10_acc.tolist()[0])  # top1, top5, top10
         avg_acc = np.mean([users_rnn_acc[x][0] for x in users_rnn_acc])  # average top1 accuracy
         return avg_loss, avg_acc, users_rnn_acc
 
