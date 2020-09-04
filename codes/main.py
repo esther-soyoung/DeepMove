@@ -245,7 +245,7 @@ if __name__ == '__main__':
     parser.add_argument('--attn_type', type=str, default='dot', choices=['general', 'concat', 'dot'])
     parser.add_argument('--data_path', type=str, default='../data/')
     parser.add_argument('--save_path', type=str, default='../results/')
-    parser.add_argument('--model_mode', type=str, default='simple_long',
+    parser.add_argument('--model_mode', type=str, default='attn_local_long',
                         choices=['simple', 'simple_long', 'attn_avg_long_user', 'attn_local_long'])
     parser.add_argument('--pretrain', type=int, default=1)
     args = parser.parse_args()
