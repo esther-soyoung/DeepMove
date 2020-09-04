@@ -38,7 +38,7 @@ def load_venues_from_tweets(path, header):
     return poi
 
 
-GRID_COUNT = 500
+GRID_COUNT = 100
 def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon], y: [lat]. 100 by 100
     dXMax, dXMin, dYMax, dYMin = max(x), min(x), max(y), min(y)
     # print dXMax, dXMin, dYMax, dYMin
@@ -73,7 +73,26 @@ def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon],
         _poi_index_dict[iIndex].append(index[i])  # key: grid id, val: raw pid
         m_vIndexCells[iIndex].append([index[i], x[i], y[i]])
 
-    return poi_index_dict, center_location_list
+    # normalize grid center location
+    lon = np.array([l[0] for l in center_location_list])
+    lon_m = np.mean(lon)
+    lon_s = np.std(lon)
+    lon_norm = [(l-lon_m)/lon_s for l in lon]
+
+    lat = np.array([l[1] for l in center_location_list])
+    lat_m = np.mean(lat)
+    lat_s = np.std(lat)
+    lat_norm = [(l-lat_m)/lat_s for l in lat]
+    import pdb
+    pdb.set_trace()
+
+    center_location_list_norm = zip(lon_norm, lat_norm)
+
+    # round 6
+    center_location_list = [(round(x[0], 6), round(x[1], 6)) for x in center_location_list]
+    center_location_list_norm = [(round(x[0], 6), round(x[1], 6)) for x in center_location_list_norm]
+
+    return poi_index_dict, center_location_list, center_location_list_norm
     # return poi_index_dict, _poi_index_dict
 
 
@@ -100,15 +119,14 @@ class DataTaxi(object):
 
         self.train_split = train_split
 
-        # self.data = {}
-        self.data = defaultdict(dict)  # key: uid, val: dict('index': list(record index), 'record': list([pid, tim]))
+        self.data = {}
         self.venues = {}
         self.pois = load_venues_from_tweets(self.TWITTER_PATH, self.header)  # key: (lon, lat), val: pid
         _raw_xy = self.pois.keys()
         _raw_x = [i[0] for i in _raw_xy]
         _raw_y = [i[1] for i in _raw_xy]
         _raw_pid = [self.pois[k] for k in _raw_xy]
-        self.grids, self.center_location_list = geo_grade(_raw_pid, _raw_x, _raw_y)  # key: raw pid, val: grid id
+        self.poi_index_dict, self.center_location_list, self.center_location_list_norm = geo_grade(_raw_pid, _raw_x, _raw_y)
         self.words_original = []
         self.words_lens = []
         self.dictionary = dict()
@@ -118,9 +136,8 @@ class DataTaxi(object):
         self.uid_list = {}
         self.vid_list = {'unk': [0, -1]}
         self.vid_list_lookup = {}  # key: int vid, val: raw pid
-        self.vid_lookup = {}  # key: int vid, val: [float(lon), float(lat)]
-        self.index_lookup = {}  # key: raw uid, val: dict(sid: [record index])
-        self.pid_loc_lat = {}
+        self.vid_lookup = {}  # key: int vid, val: grid center [lon, lat]
+        self.pid_loc_lat = {}  # key: raw vid, val: grid center [lon, lat]
         self.data_neural = {}
 
 
@@ -133,7 +150,7 @@ class DataTaxi(object):
                 taxi_seq, year, month, day, hour, minute, second, lat, lon = line.strip('\r\n').split('\t')
                 pid = self.pois[(round(float(lon), 6), round(float(lat), 6))]  # pid
                 if self.grid:
-                    pid = self.grids[pid]  # key: raw pid, val: grid id 
+                    pid = self.poi_index_dict[pid]  # key: raw pid, val: grid id 
                 uid = taxi_seq.split('.')[0]
                 year = year.split('.')[0]
                 month = month.split('.')[0].zfill(2)
@@ -143,13 +160,9 @@ class DataTaxi(object):
                 second = second.split('.')[0].zfill(2)
                 tim = '%s-%s-%s %s:%s:%s' %(year, month, day, hour, minute, second)
                 if uid not in self.data:
-                    self.data[uid]['index'] = [i]
-                    self.data[uid]['record'] = [[pid, tim]]
-                    # self.data[uid] = [[pid, tim]]
+                    self.data[uid] = [[pid, tim]]
                 else:
-                    self.data[uid]['index'].append(i)
-                    self.data[uid]['record'].append([pid, tim])
-                    # self.data[uid].append([pid, tim])
+                    self.data[uid].append([pid, tim])
                 if pid not in self.venues:
                     self.venues[pid] = 1
                 else:
@@ -158,11 +171,9 @@ class DataTaxi(object):
     # ########### 3.0 basically filter users based on visit length and other statistics
     def filter_users_by_length(self):
         # filter out uses with <= 10 records
-        # uid_3 = [x for x in self.data if len(self.data[x]) > self.trace_len_min]
-        uid_3 = [x for x in self.data if len(self.data[x]['record']) > self.trace_len_min]
+        uid_3 = [x for x in self.data if len(self.data[x]) > self.trace_len_min]
         # sort users by the number of records, descending order
-        # pick3 = sorted([(x, len(self.data[x])) for x in uid_3], key=lambda x: x[1], reverse=True)
-        pick3 = sorted([(x, len(self.data[x]['record'])) for x in uid_3], key=lambda x: x[1], reverse=True)
+        pick3 = sorted([(x, len(self.data[x])) for x in uid_3], key=lambda x: x[1], reverse=True)
         # filter out venues with less than or equal to 10 visits
         pid_3 = [x for x in self.venues if self.venues[x] > self.location_global_visit_min]
         # sort venues by the number of visits, descending order
@@ -172,15 +183,11 @@ class DataTaxi(object):
         session_len_list = []
         for u in pick3:  # users with > 10 records. [(uid, number of records)]
             uid = u[0]
-            # info = self.data[uid]  # [[pid, tim]]
-            indices = self.data[uid]['index']  # [record index]
-            info = self.data[uid]['record']  # [[pid, tim]]
-            assert len(indices) == len(info)
+            info = self.data[uid]  # [[pid, tim]]
             topk = Counter([x[0] for x in info]).most_common()  # pid, number of visits (descending order)
             # pid of locations visited more than once
             topk1 = [x[0] for x in topk if x[1] > 1]
             sessions = {}
-            index = {}
             for i, record in enumerate(info):
                 poi, tmd = record
                 try:
@@ -194,39 +201,31 @@ class DataTaxi(object):
                 # else, add this [pid, tmd] as session
                 if i == 0 or len(sessions) == 0:
                     sessions[sid] = [record]
-                    index[sid] = [indices[i]]
                 else:
                     # if minute gap since last record > 5 | last session has > 10 records, start new session
                     if (tid - last_tid) / 60 > self.minute_gap or len(sessions[sid - 1]) > self.session_max:
                         sessions[sid] = [record]
-                        index[sid] = [indices[i]]
                     # if the record is apart from the last record for
                     # <= 72 hours, and
                     # > 10 minutes,
                     # then append record to the last session
                     elif (tid - last_tid) / 60 > self.min_gap:
                         sessions[sid - 1].append(record)
-                        index[sid-1].append(indices[i])
                     # if the record is apart from the last record for <= 4 minutes
                     else:
                         pass
                 last_tid = tid
 
             sessions_filter = {}  # key: filtered sid, val: [[raw pid, raw tim]]
-            index_filter = {}
             for s in sessions:  # sid
                 # sessions with records >= 5
                 if len(sessions[s]) >= self.filter_short_session:
                     sessions_filter[len(sessions_filter)] = sessions[s]
-                    index_filter[len(sessions_filter)-1] = index[s]  # record index
                     session_len_list.append(len(sessions[s]))
             # if the filtered sessions(sessions with >= 5 records) are >= 5
             if len(sessions_filter) >= self.sessions_count_min:
                 self.data_filter[uid] = {'sessions_count': len(sessions_filter), 'topk_count': len(topk), 'topk': topk,
                                          'sessions': sessions_filter, 'raw_sessions': sessions}
-                self.index_lookup[uid] = index_filter
-                assert len(self.index_lookup[uid]) == len(sessions_filter)
-                assert sum([len(self.index_lookup[uid][s]) for s in sessions_filter.keys()]) == sum([len(sessions_filter[s]) for s in sessions_filter.keys()])
 
         # list of uid in filtered sessions
         self.user_filter3 = [x for x in self.data_filter if
@@ -256,8 +255,10 @@ class DataTaxi(object):
                 taxi_seq, year, month, day, hour, minute, second, lat, lon = line.strip('\r\n').split('\t')
                 pid = self.pois[(round(float(lon), 6), round(float(lat), 6))]
                 if self.grid:
-                    pid = self.grids[pid]
-                self.pid_loc_lat[pid] = [round(float(lon), 6), round(float(lat), 6)]
+                    pid = self.poi_index_dict[pid]
+                # self.pid_loc_lat[pid] = [round(float(lon), 6), round(float(lat), 6)]
+                self.pid_loc_lat[pid] = self.center_location_list[pid]
+                # self.pid_loc_lat[pid] = self.center_location_list_norm[pid]
 
     def venues_lookup(self):
         for vid in self.vid_list_lookup:  # int vid
@@ -363,15 +364,10 @@ class DataTaxi(object):
     def save_variables(self):
         taxi_dataset = {'data_neural': self.data_neural, 'vid_list': self.vid_list, 'uid_list': self.uid_list,
                               'parameters': self.get_parameters(), 'data_filter': self.data_filter,
-                              'vid_lookup': self.vid_lookup, 'index_lookup': self.index_lookup}
-                            #   'vid_lookup': self.vid_lookup}
-        pickle.dump(taxi_dataset, open(self.SAVE_PATH + self.save_name + '_grid500.pk', 'wb'))
+                              'vid_lookup': self.vid_lookup}
+        pickle.dump(taxi_dataset, open(self.SAVE_PATH + self.save_name + '.pk', 'wb'))
 
-        grid_lookup = {}
-        for g in self.vid_lookup.keys():  # filtered grid id
-            raw_g = self.vid_list_lookup[g]
-            grid_lookup[g] = self.center_location_list[raw_g]
-        dataset = {'grid_dictionary': grid_lookup, 'center_location_list': self.center_location_list}
+        dataset = {'grid_dictionary': self.vid_lookup, 'center_location_list': self.center_location_list, 'center_location_list_norm': self.center_location_list_norm}
         pickle.dump(dataset, open(self.save_name + '_dictionary' + '.pk', 'wb'))
 
 
