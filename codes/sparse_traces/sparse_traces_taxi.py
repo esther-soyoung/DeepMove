@@ -83,8 +83,6 @@ def geo_grade(index, x, y, m_nGridCount=GRID_COUNT):  # index: [pids], x: [lon],
     lat_m = np.mean(lat)
     lat_s = np.std(lat)
     lat_norm = [(l-lat_m)/lat_s for l in lat]
-    import pdb
-    pdb.set_trace()
 
     center_location_list_norm = zip(lon_norm, lat_norm)
 
