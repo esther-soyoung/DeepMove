@@ -225,6 +225,9 @@ class DataTaxi(object):
                 self.data_filter[uid] = {'sessions_count': len(sessions_filter), 'topk_count': len(topk), 'topk': topk,
                                          'sessions': sessions_filter, 'raw_sessions': sessions}
 
+        #         self.data_filter[uid] = {'sessions': sessions_filter}
+        # pickle.dump(self.data_filter, open(self.save_name + '.pk', 'wb'))
+        # sys.exit()
         # list of uid in filtered sessions
         self.user_filter3 = [x for x in self.data_filter if
                              self.data_filter[x]['sessions_count'] >= self.sessions_count_min]

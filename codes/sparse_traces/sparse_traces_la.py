@@ -54,7 +54,7 @@ class DataFoursquareLA(object):
 
         self.train_split = train_split
 
-        self.data = defaultdict(dict)  # key: uid, val: dict('index': list(record index), 'record': list([pid, tim]))
+        self.data = {}
         self.venues = {}
         self.pois = load_venues_from_tweets(self.TWITTER_PATH)
         self.words_original = []
@@ -83,11 +83,9 @@ class DataFoursquareLA(object):
                 tim = time.strptime(tim, "%a %b %d %H:%M:%S %Y")
                 tim = time.strftime("%Y-%m-%d %H:%M:%S", tim)
                 if uid not in self.data:
-                    self.data[uid]['index'] = [i]
-                    self.data[uid]['record'] = [[pid, tim]]
+                    self.data[uid] = [[pid, tim]]
                 else:
-                    self.data[uid]['index'].append(i)
-                    self.data[uid]['record'].append([pid, tim])
+                    self.data[uid].append([pid, tim])
                 if pid not in self.venues:
                     self.venues[pid] = 1
                 else:
@@ -96,9 +94,9 @@ class DataFoursquareLA(object):
     # ########### 3.0 basically filter users based on visit length and other statistics
     def filter_users_by_length(self):
         # filter out uses with less than 10 records
-        uid_3 = [x for x in self.data if len(self.data[x]['record']) > self.trace_len_min]
+        uid_3 = [x for x in self.data if len(self.data[x]) > self.trace_len_min]
         # sort users by the number of records, descending order
-        pick3 = sorted([(x, len(self.data[x]['record'])) for x in uid_3], key=lambda x: x[1], reverse=True)
+        pick3 = sorted([(x, len(self.data[x])) for x in uid_3], key=lambda x: x[1], reverse=True)
         # filter out venues with less than 10 visits
         pid_3 = [x for x in self.venues if self.venues[x] > self.location_global_visit_min]
         # sort venues by the number of visits, descending order
@@ -108,14 +106,11 @@ class DataFoursquareLA(object):
         session_len_list = []
         for u in pick3:
             uid = u[0]
-            indices = self.data[uid]['index']  # [record index]
-            info = self.data[uid]['record']  # [[pid, tim]]
-            assert len(indices) == len(info)
+            info = self.data[uid]  # [[pid, tim]]
             topk = Counter([x[0] for x in info]).most_common()  # pid, number of visits (descending order)
             # pid of locations visited more than once
             topk1 = [x[0] for x in topk if x[1] > 1]
             sessions = {}
-            index = {}
             for i, record in enumerate(info):
                 poi, tmd = record
                 try:
@@ -128,39 +123,35 @@ class DataFoursquareLA(object):
                     continue
                 if i == 0 or len(sessions) == 0:  # very first session
                     sessions[sid] = [record]
-                    index[sid] = [indices[i]]
                 else:
                     # if hour gap since last record > 72 | last session has > 10 records, start new session
                     if (tid - last_tid) / 3600 > self.hour_gap or len(sessions[sid - 1]) > self.session_max:
                         sessions[sid] = [record]
-                        index[sid] = [indices[i]]
                     # if the record is apart from the last record for
                     # <= 72 hours, and
                     # > 10 minutes,
                     # then append record to the last session
                     elif (tid - last_tid) / 60 > self.min_gap:
                         sessions[sid - 1].append(record)
-                        index[sid-1].append(indices[i])
                     # if the record is apart from the last record for <= 10 minutes
                     else:
                         pass
                 last_tid = tid
 
             sessions_filter = {}
-            index_filter = {}
             for s in sessions:  # sid
                 # sessions with records >= 5
                 if len(sessions[s]) >= self.filter_short_session:
                     sessions_filter[len(sessions_filter)] = sessions[s]  # record
-                    index_filter[len(sessions_filter)-1] = index[s]  # record index
                     session_len_list.append(len(sessions[s]))
             # if the filtered sessions(sessions with >= 5 records) are >= 5
             if len(sessions_filter) >= self.sessions_count_min:
                 self.data_filter[uid] = {'sessions_count': len(sessions_filter), 'topk_count': len(topk), 'topk': topk,
                                          'sessions': sessions_filter, 'raw_sessions': sessions}
-                self.index_lookup[uid] = index_filter
-                assert len(self.index_lookup[uid]) == len(sessions_filter)
-                assert sum([len(self.index_lookup[uid][s]) for s in sessions_filter.keys()]) == sum([len(sessions_filter[s]) for s in sessions_filter.keys()])
+
+        #         self.data_filter[uid] = {'sessions': sessions_filter}
+        # pickle.dump(self.data_filter, open(self.save_name + '.pk', 'wb'))
+        # sys.exit()
 
         # list of uid in filtered sessions
         self.user_filter3 = [x for x in self.data_filter if
@@ -295,16 +286,13 @@ class DataFoursquareLA(object):
     def save_variables(self):
         foursquare_dataset = {'data_neural': self.data_neural, 'vid_list': self.vid_list, 'uid_list': self.uid_list,
                               'parameters': self.get_parameters(), 'data_filter': self.data_filter,
-                              'vid_lookup': self.vid_lookup, 'index_lookup': self.index_lookup}
+                              'vid_lookup': self.vid_lookup}
         pickle.dump(foursquare_dataset, open(self.SAVE_PATH + self.save_name + '.pk', 'wb'))
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--trace_min', type=int, default=10, help="raw trace length filter threshold")
-    # global_visit
-    # 0: final users:2665 final locations:247188
-    # >=1: final users:0 final locations:1
     parser.add_argument('--global_visit', type=int, default=10, help="location global visit threshold")
     parser.add_argument('--hour_gap', type=int, default=72, help="maximum interval of two trajectory points")
     parser.add_argument('--min_gap', type=int, default=10, help="minimum interval of two trajectory points")

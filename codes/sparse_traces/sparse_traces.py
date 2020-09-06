@@ -24,6 +24,15 @@ def entropy_spatial(sessions):
     entropy = - np.sum(frequency * np.log(frequency))
     return entropy
 
+def load_venues_from_tweets(path):
+    poi = {}
+    cnt = 0
+    with open(path) as v:
+        for line in v:
+            _, uid, lon, lat, tim, _, _, tweet, pid = line.strip('\r\n').split('')
+            poi[(lon, lat)] = cnt
+            cnt += 1
+    return poi
 
 class DataFoursquare(object):
     def __init__(self, trace_min=10, global_visit=10, hour_gap=72, min_gap=10, session_min=2, session_max=10,
@@ -32,7 +41,7 @@ class DataFoursquare(object):
         self.TWITTER_PATH = tmp_path + 'tweets-cikm.txt'
         self.VENUES_PATH = tmp_path + 'venues_all.txt'
         self.SAVE_PATH = tmp_path
-        self.save_name = 'foursquare2'
+        self.save_name = 'foursquare3'
 
         self.trace_len_min = trace_min
         self.location_global_visit_min = global_visit
@@ -45,8 +54,9 @@ class DataFoursquare(object):
 
         self.train_split = train_split
 
-        self.data = defaultdict(dict)  # key: uid, val: dict('index': list(record index), 'record': list([pid, tim]))
+        self.data = {}  # key: uid, val: dict('index': list(record index), 'record': list([pid, tim]))
         self.venues = {}
+        self.pois = load_venues_from_tweets(self.TWITTER_PATH)
         self.words_original = []
         self.words_lens = []
         self.dictionary = dict()
@@ -65,13 +75,12 @@ class DataFoursquare(object):
     def load_trajectory_from_tweets(self):
         with open(self.TWITTER_PATH) as fid:
             for i, line in enumerate(fid):
-                _, uid, _, _, tim, _, _, tweet, pid = line.strip('\r\n').split('')
+                _, uid, lon, lat, tim, _, _, tweet, pid = line.strip('\r\n').split('')
+                pid = self.pois[(lon, lat)]
                 if uid not in self.data:
-                    self.data[uid]['index'] = [i]
-                    self.data[uid]['record'] = [[pid, tim]]
+                    self.data[uid] = [[pid, tim]]
                 else:
-                    self.data[uid]['index'].append(i)
-                    self.data[uid]['record'].append([pid, tim])
+                    self.data[uid].append([pid, tim])
                 if pid not in self.venues:
                     self.venues[pid] = 1
                 else:
@@ -80,9 +89,9 @@ class DataFoursquare(object):
     # ########### 3.0 basically filter users based on visit length and other statistics
     def filter_users_by_length(self):
         # filter out users with less than 10 records
-        uid_3 = [x for x in self.data if len(self.data[x]['record']) > self.trace_len_min]
+        uid_3 = [x for x in self.data if len(self.data[x]) > self.trace_len_min]
         # sort users by the number of records, descending order
-        pick3 = sorted([(x, len(self.data[x]['record'])) for x in uid_3], key=lambda x: x[1], reverse=True)
+        pick3 = sorted([(x, len(self.data[x])) for x in uid_3], key=lambda x: x[1], reverse=True)
         # filter out venues with less than 10 visits
         pid_3 = [x for x in self.venues if self.venues[x] > self.location_global_visit_min]
         # sort venues by the number of visits, descending order
@@ -92,14 +101,11 @@ class DataFoursquare(object):
         session_len_list = []
         for u in pick3:
             uid = u[0]
-            indices = self.data[uid]['index']  # [record index]
-            info = self.data[uid]['record']  # [[pid, tim]]
-            assert len(indices) == len(info)
+            info = self.data[uid]  # [[pid, tim]]
             topk = Counter([x[0] for x in info]).most_common()  # pid, number of visits (descending order)
             # pid of locations visited more than once
             topk1 = [x[0] for x in topk if x[1] > 1]
             sessions = {}
-            index = {}
             for i, record in enumerate(info):
                 poi, tmd = record
                 try:
@@ -114,39 +120,34 @@ class DataFoursquare(object):
                 # else, add this [pid, tmd] as session
                 if i == 0 or len(sessions) == 0:  # init sessions
                     sessions[sid] = [record]
-                    index[sid] = [indices[i]]
                 else:
                     # if hour gap since last record > 72 | last session has > 10 records, start new session
                     if (tid - last_tid) / 3600 > self.hour_gap or len(sessions[sid - 1]) > self.session_max:
                         sessions[sid] = [record]
-                        index[sid] = [indices[i]]
                     # if the record is apart from the last record for
                     # <= 72 hours, and
                     # > 10 minutes,
                     # then append record to the last session
                     elif (tid - last_tid) / 60 > self.min_gap:
                         sessions[sid - 1].append(record)
-                        index[sid-1].append(indices[i])
                     # if the record is apart from the last record for <= 10 minutes
                     else:
                         pass
                 last_tid = tid
 
             sessions_filter = {}
-            index_filter = {}
             for s in sessions:
                 # sessions with records >= 5
                 if len(sessions[s]) >= self.filter_short_session:
                     sessions_filter[len(sessions_filter)] = sessions[s]
-                    index_filter[len(sessions_filter)-1] = index[s]  # record index
                     session_len_list.append(len(sessions[s]))
             # if the filtered sessions(sessions with >= 5 records) are >= 5
             if len(sessions_filter) >= self.sessions_count_min:
                 self.data_filter[uid] = {'sessions_count': len(sessions_filter), 'topk_count': len(topk), 'topk': topk,
                                          'sessions': sessions_filter, 'raw_sessions': sessions}
-                self.index_lookup[uid] = index_filter
-                assert len(self.index_lookup[uid]) == len(sessions_filter)
-                assert sum([len(self.index_lookup[uid][s]) for s in sessions_filter.keys()]) == sum([len(sessions_filter[s]) for s in sessions_filter.keys()])
+                # self.data_filter[uid] = {'sessions': sessions_filter}
+        # pickle.dump(self.data_filter, open(self.save_name + '.pk', 'wb'))
+        # sys.exit()
 
         # list of uid in filtered sessions
         self.user_filter3 = [x for x in self.data_filter if
@@ -172,6 +173,7 @@ class DataFoursquare(object):
         with open(self.TWITTER_PATH, 'r') as fid:
             for line in fid:
                 _, uid, lon, lat, tim, _, _, tweet, pid = line.strip('\r\n').split('')
+                pid = self.pois[(lon, lat)]
                 self.pid_loc_lat[pid] = [float(lon), float(lat)]
 
     def venues_lookup(self):
@@ -203,7 +205,7 @@ class DataFoursquare(object):
             sessions_id = []
             for sid in sessions:
                 sessions_tran[sid] = [[self.vid_list[p[0]][0], self.tid_list_48(p[1])] for p in
-                                      sessions[sid]]  # [vid, tid]
+                                      sessions[sid]]  # [int vid, tid]
                 sessions_id.append(sid)
             split_id = int(np.floor(self.train_split * len(sessions_id)))
             split_valid_id = int(split_id + np.floor((len(sessions_id) - split_id) / 2))
@@ -279,7 +281,7 @@ class DataFoursquare(object):
     def save_variables(self):
         foursquare_dataset = {'data_neural': self.data_neural, 'vid_list': self.vid_list, 'uid_list': self.uid_list,
                               'parameters': self.get_parameters(), 'data_filter': self.data_filter,
-                              'vid_lookup': self.vid_lookup, 'index_lookup': self.index_lookup}
+                              'vid_lookup': self.vid_lookup}
         pickle.dump(foursquare_dataset, open(self.SAVE_PATH + self.save_name + '.pk', 'wb'))
 
 
