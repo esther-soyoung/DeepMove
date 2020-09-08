@@ -77,6 +77,8 @@ class RnnParameterData(object):
         self.data_name = data_name
         data = pickle.load(open(self.data_path + self.data_name + '.pk', 'rb'))
         self.vid_list = data['vid_list']  # key: raw poi, val: [int vid, number of visits]
+        # pickle.dump(self.vid_list, open(self.data_name + '_pid.pk', 'wb'))
+        # sys.exit()
         self.uid_list = data['uid_list']  # key: raw uid, val: [int uid, number of sessions]
         self.data_neural = data['data_neural']
         self.data_filter = data['data_filter']  # key: raw uid, val: {sessions: {sid: [[raw pid, raw tim], ...]}, ...}
@@ -100,7 +102,7 @@ class RnnParameterData(object):
                 continue
             self.grid_lookup[v[0]] = self._raw_grid_lookup[k]
 
-        # # ny, la dictionary.pk
+        # ny, la dictionary.pk
         # dataset = {'pid_index_dict': self.grid_lookup,  # key: int pid, val: grid id
         #             'center_location_list': self.center_location_list,  # grid center locations
         #             'pid_dictionary_raw': self.vid_lookup}  # key: int pid, val: (lon, lat)
@@ -466,6 +468,16 @@ def get_acc(target, scores, grid=None):
             acc[2] += 1  # top1
     return acc
 
+def get_mrr(target, scores):
+    val, idxx = scores.data.topk(scores.data.shape[1], 1)  # top 10 predictions
+    target = target.data.cpu().numpy()
+    idxx = idxx.cpu().numpy()
+    mrr = .0
+    for i in xrange(len(target)):
+        rank = np.where(target[i] == idxx[i])
+        mrr += (1.0/(rank[0]+1))
+    return mrr
+
 def dcg_at_k(r, k, method=1):
     r = np.asfarray(r)[:k]
     if r.size:
@@ -528,13 +540,13 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
     queue_len = len(run_queue)
 
     users_acc = {}
-    users_ndcg = {}
+    users_mrr = {}
     for c in range(queue_len):
         optimizer.zero_grad()
         u, i = run_queue.popleft()  # uid, train|test sid
         if u not in users_acc:
             users_acc[u] = [0, 0, 0, 0]  # [total # of target records, top1, top5, top10]
-            users_ndcg[u] = [0, 0, 0]  # [@1, @5, @10]
+            users_mrr[u] = 0  # initiate
         loc = data[u][i]['loc'].cuda()  # cumulative loc up to session_i[-1]
         tim = data[u][i]['tim'].cuda()  # cumulative tim up to session_i[-1]
         target = data[u][i]['target'].cuda()  # [vid], answer vid of session_i[1:]
@@ -571,17 +583,14 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             optimizer.step()
         elif mode == 'test':
             users_acc[u][0] += len(target)
-            acc= get_acc(target, scores)
+            acc = get_acc(target, scores)
             if grid_eval:
                 acc = get_acc(target, scores, grid=grid)
-            # for i in scores.data:
-            #     users_ndcg[u][0] += ndcg_at_k(i, 1)
-            #     users_ndcg[u][1] += ndcg_at_k(i, 5)
-            #     users_ndcg[u][2] += ndcg_at_k(i, 10)
-
             users_acc[u][1] += acc[2]  # top1 Acc
             users_acc[u][2] += acc[1]  # top5 Acc
             users_acc[u][3] += acc[0]  # top10 Acc
+
+            users_mrr[u] += get_mrr(target, scores)
 
         total_loss.append(loss.data.cpu().numpy()[0])
 
@@ -594,10 +603,8 @@ def run_simple(data, run_idx, mode, lr, clip, model, optimizer, criterion, mode2
             top1_acc = users_acc[u][1] / users_acc[u][0]  # user u's top1 accuracy
             top5_acc = users_acc[u][2] / users_acc[u][0]  # user u's top5 accuracy
             top10_acc = users_acc[u][3] / users_acc[u][0]  # user u's top10 accuracy
-            # ndcg1 = users_ndcg[u][0] / users_acc[u][0]
-            # ndcg5 = users_ndcg[u][2] / users_acc[u][0]
-            # ndcg10 = users_ndcg[u][3] / users_acc[u][0]
-            users_rnn_acc[u] = (top1_acc.tolist()[0], top5_acc.tolist()[0], top10_acc.tolist()[0]) #, ndcg1, ndcg5, ndcg10)  # top1, top5, top10, ndcg1, ndcg5, ndcg10
+            mrr = users_mrr[u] / users_acc[u][0]  # user's average mrr
+            users_rnn_acc[u] = (top1_acc.tolist()[0], top5_acc.tolist()[0], top10_acc.tolist()[0], mrr)  # top1, top5, top10, mrr
 
         avg_acc = np.mean([users_rnn_acc[x][0] for x in users_rnn_acc])  # average top1 accuracy
         return avg_loss, avg_acc, users_rnn_acc

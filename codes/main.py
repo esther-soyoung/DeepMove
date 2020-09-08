@@ -52,14 +52,13 @@ def run(args):
         model = TrajPreAttnAvgLongUser(parameters=parameters).cuda()
     elif parameters.model_mode == 'attn_local_long':
         model = TrajPreLocalAttnLong(parameters=parameters).cuda()
-        # import pdb;pdb.set_trace()
     if args.pretrain == 1:
         if 'taxi' in args.data_name:  # taxi
             model.load_state_dict(torch.load("./taxi/ep6test/res.m"))
         elif 'la' in args.data_name:  # la
-            model.load_state_dict(torch.load("./la/lr_00005/res.m"))
+            model.load_state_dict(torch.load("./la/final_model/res.m"))
         elif 'foursquare' in args.data_name:  # ny
-            model.load_state_dict(torch.load("./ny/lr_00005/res.m"))
+            model.load_state_dict(torch.load("./ny/final_model/res.m"))
 
     if 'max' in parameters.model_mode:
         parameters.history_mode = 'max'
@@ -79,8 +78,8 @@ def run(args):
     metrics = {'train_loss': [], 'valid_loss': [], 'accuracy': [], 'valid_acc': {}}
 
     candidate = parameters.data_neural.keys()  # list(uid)
-    avg_acc_markov, users_acc_markov = markov(parameters, candidate)
-    metrics['markov_acc'] = users_acc_markov
+    # avg_acc_markov, users_acc_markov = markov(parameters, candidate)
+    # metrics['markov_acc'] = users_acc_markov
 
     st = time.time()
     if 'long' in parameters.model_mode:
@@ -98,20 +97,20 @@ def run(args):
             data_train, train_idx = generate_input_long_history2(parameters.data_neural, 'train', candidate=candidate)
             data_test, test_idx = generate_input_long_history2(parameters.data_neural, 'test', candidate=candidate)
         else:
-            data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
+            # data_train, train_idx = generate_input_long_history(parameters.data_neural, 'train', candidate=candidate)
                                                                 # grid_train=args.grid_train,  # train with grid id instaed of pid
                                                                 # grid=parameters.grid_lookup)  
-            data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate,
+            data_test, test_idx = generate_input_long_history(parameters.data_neural, 'test', candidate=candidate)
                                                             #   grid_train=args.grid_train,  # train with grid id instaed of pid
-                                                              grid=parameters.grid_lookup,
+                                                            #   grid=parameters.grid_lookup,
                                                             #   data_name=parameters.data_name,  # write data_name.tsv
-                                                              raw_uid=parameters.uid_lookup,  # write data_name.tsv
-                                                              raw_sess=parameters.data_filter)  # write data_name.tsv
-            data_valid, valid_idx = generate_input_long_history(parameters.data_neural, 'valid', candidate=candidate)
+                                                            #   raw_uid=parameters.uid_lookup,  # write data_name.tsv
+                                                            #   raw_sess=parameters.data_filter)  # write data_name.tsv
+            # data_valid, valid_idx = generate_input_long_history(parameters.data_neural, 'valid', candidate=candidate)
 
-    logger.info('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
-                                                       len([y for x in train_idx for y in train_idx[x]]),
-                                                       len([y for x in test_idx for y in test_idx[x]])))
+    # logger.info('users:{} markov:{} train:{} test:{}'.format(len(candidate), avg_acc_markov,
+    #                                                    len([y for x in train_idx for y in train_idx[x]]),
+    #                                                    len([y for x in test_idx for y in test_idx[x]])))
     logger.info('*' * 15 + 'generated input: {}'.format(time.time() - st) + '*' * 15)
     SAVE_PATH = args.save_path
     tmp_path = 'checkpoint/'
@@ -126,8 +125,8 @@ def run(args):
     # writer = SummaryWriter(args.data_name)
     logger.info('*' * 15 + 'start training' + '*' * 15)
     for epoch in range(parameters.epoch):
-        # if args.pretrain == 1:
-        #     break
+        if args.pretrain == 1:
+            break
         st = time.time()
         if args.pretrain == 0:
             model, avg_loss = run_simple(data_train, train_idx, 'train', lr, parameters.clip, model, optimizer,
@@ -138,7 +137,7 @@ def run(args):
         # validation
         avg_loss, avg_acc, users_acc = run_simple(data_valid, valid_idx, 'test', lr, parameters.clip, model,
                                                 optimizer, criterion, parameters.model_mode,
-                                                  grid_eval=args.grid_eval,  # accuracy eval시에만 grid mapping
+                                                #   grid_eval=args.grid_eval,  # accuracy eval시에만 grid mapping
                                                 grid=parameters.grid_lookup)
         logger.info('==>Validation Acc:{:.4f} Loss:{:.4f}'.format(avg_acc, avg_loss))
 
@@ -165,28 +164,25 @@ def run(args):
         if args.pretrain == 1:
             break
 
-    mid = np.argmax(metrics['accuracy'])
-    avg_acc = metrics['accuracy'][mid]
-    load_name_tmp = 'ep_' + str(mid) + '.m'
-    model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
+    # mid = np.argmax(metrics['accuracy'])
+    # avg_acc = metrics['accuracy'][mid]
+    # load_name_tmp = 'ep_' + str(mid) + '.m'
+    # model.load_state_dict(torch.load(SAVE_PATH + tmp_path + load_name_tmp))
     # test
     logger.info('*' * 15 + 'start testing' + '*' * 15)
-    grid_eval = True
-    if 'taxi' in args.data_name:
-        grid_eval = False
+    # grid_eval = True
+    # if 'taxi' in args.data_name:
+    #     grid_eval = False
     avg_loss, avg_acc, users_acc = run_simple(data_test, test_idx, 'test', lr, parameters.clip, model,
-                                              optimizer, criterion, parameters.model_mode,
+                                              optimizer, criterion, parameters.model_mode)
                                             #   grid_eval=grid_eval,  # accuracy eval시에만 grid mapping
-                                              grid=parameters.grid_lookup,
-                                              center=parameters.center_location_list)
-    # logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Top10 Acc:{:.4f} NDCG@1:{:.4f} NDCG@5:{:.4f} NDCG@10:{:.4f} Loss:{:.4f}'.format(
-    logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Top10 Acc:{:.4f} Loss:{:.4f}'.format(
+                                            #   grid=parameters.grid_lookup,
+                                            #   center=parameters.center_location_list)
+    logger.info('==>Test Top1 Acc:{:.4f} Top5 Acc:{:.4f} Top10 Acc:{:.4f} MRR:{:.4f} Loss:{:.4f}'.format(
                 avg_acc, 
                 np.mean([users_acc[x][1] for x in users_acc]),
                 np.mean([users_acc[x][2] for x in users_acc]),
-                # np.mean([users_acc[x][3] for x in users_acc]),  # ndcg
-                # np.mean([users_acc[x][4] for x in users_acc]),
-                # np.mean([users_acc[x][5] for x in users_acc]),
+                np.mean([users_acc[x][3] for x in users_acc]),  # overall mrr
                 avg_loss))
 
     metrics['valid_loss'].append(avg_loss)
@@ -214,9 +210,9 @@ def load_pretrained_model(config):
     if 'taxi' in config.data_name:  # taxi
         res = json.load(open("./taxi/ep6test/res.txt"))
     elif 'la' in config.data_name:  # la
-        res = json.load(open("./la/lr_00005/res.txt"))
+        res = json.load(open("./la/final_model/res.txt"))
     elif 'foursquare' in config.data_name:  # ny
-        res = json.load(open("./ny/lr_00005/res.txt"))
+        res = json.load(open("./ny/final_model/res.txt"))
     args = Settings(config, res["args"])
     return args
 
